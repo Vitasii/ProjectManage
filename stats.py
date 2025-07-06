@@ -1,5 +1,5 @@
 import json, os
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QGraphicsView, QGraphicsScene, QMenu, QMessageBox
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QGraphicsView, QGraphicsScene, QMenu, QMessageBox, QLabel
 from PyQt5.QtCore import Qt
 from tree_base import NodeItem, EdgeLine
 from settings import load_settings
@@ -8,6 +8,7 @@ from PyQt5.QtGui import QPainter
 import matplotlib.pyplot as plt
 import datetime
 from collections import defaultdict
+import db
 
 DATA_FILE = "data.json"
 
@@ -15,30 +16,13 @@ def load_data():
     if os.path.exists(DATA_FILE):
         with open(DATA_FILE, "r", encoding="utf-8") as f:
             return json.load(f)
-    return {"name": "Root", "children": [], "pos": [0, 0], "done": False, "history": {"learn": {}, "review": {}}}
+    return {"name": "Root", "children": [], "pos": [0, 0], "done": False}
 
-def total_learn_time(node):
-    self_time = sum(
-        e["end"] - e["start"]
-        for day in node.get("history", {}).get("learn", {}).values()
-        for e in day
-    )
-    return self_time + sum(total_learn_time(ch) for ch in node.get("children", []))
-
-def total_review_time(node):
-    self_time = sum(
-        e["end"] - e["start"]
-        for day in node.get("history", {}).get("review", {}).values()
-        for e in day
-    )
-    return self_time + sum(total_review_time(ch) for ch in node.get("children", []))
-
-def collect_history_by_date(node, mode, date_dict):
-    # mode: "learn" or "review"
-    for date_str, records in node.get("history", {}).get(mode, {}).items():
-        date_dict[date_str] += sum(e["end"] - e["start"] for e in records)
+def collect_ids(node):
+    ids = [node.get("id")]
     for ch in node.get("children", []):
-        collect_history_by_date(ch, mode, date_dict)
+        ids.extend(collect_ids(ch))
+    return ids
 
 def get_last_n_days(n):
     today = datetime.date.today()
@@ -56,6 +40,23 @@ def get_last_n_months(n):
         months.append(f"{year}-{month:02d}")
     return months
 
+def format_seconds(seconds):
+    h = seconds // 3600
+    m = (seconds % 3600) // 60
+    s = seconds % 60
+    return f"{h}h {m}m {s}s"
+
+def node_learn_review_time(node):
+    ids = collect_ids(node)
+    learn = 0
+    review = 0
+    for node_id in ids:
+        for _, _, start, end in db.get_records(db.DB_LEARN, node_id):
+            learn += end - start
+        for _, _, start, end in db.get_records(db.DB_REVIEW, node_id):
+            review += end - start
+    return learn, review
+
 class StatsWidget(QWidget):
     def __init__(self, main_window):
         super().__init__()
@@ -64,9 +65,12 @@ class StatsWidget(QWidget):
         self.data = load_data()
         layout = QVBoxLayout(self)
         self.scene = QGraphicsScene()
-        self.view = QGraphicsView(self.scene)
+        from tree_base import ZoomableGraphicsView
+        self.view = ZoomableGraphicsView(self.scene)
         self.view.setRenderHint(QPainter.Antialiasing)
         layout.addWidget(self.view)
+        self.info_label = QLabel()
+        layout.addWidget(self.info_label)
         self.node_items = []
         self.selected_node = None
         self.edges = []
@@ -86,19 +90,12 @@ class StatsWidget(QWidget):
             node["pos"] = [node_x, y]
             for i, ch in enumerate(node.get("children", [])):
                 layout_tree(ch, depth+1, node_x, len(node["children"]), i, x_offset, y_offset)
-        def all_overlap(node):
-            if node.get("pos", [0,0]) != [0,0]:
-                return False
-            return all(all_overlap(ch) for ch in node.get("children", []))
-        if all_overlap(self.data):
-            layout_tree(self.data)
+        layout_tree(self.data)
         def draw_tree(node, parent_item=None):
             color = self.settings["project_finished"] if node.get("done") else self.settings["project_unfinished"]
-            total_learn = total_learn_time(node)
-            total_review = total_review_time(node)
-            item = NodeItem(node, color)
-            item.node_text = lambda: f'{node["name"]}\nLearn:{int(total_learn)}s\nReview:{int(total_review)}s'
-            item.text.setPlainText(item.node_text())
+            learn, review = node_learn_review_time(node)
+            text = f'{node["name"]}\nLearn:{format_seconds(learn)}\nReview:{format_seconds(review)}'
+            item = NodeItem(node, color, text)
             self.scene.addItem(item)
             self.node_items.append(item)
             if parent_item:
@@ -109,12 +106,18 @@ class StatsWidget(QWidget):
                 draw_tree(ch, item)
         draw_tree(self.data)
         self.view.setSceneRect(self.scene.itemsBoundingRect().adjusted(-100, -100, 100, 100))
-        for item in self.node_items:
-            item.update_lines = self.update_all_edges
+        self.show_total_time()
 
-    def update_all_edges(self):
-        for edge in self.edges:
-            edge.update_position()
+    def show_total_time(self):
+        ids = collect_ids(self.data)
+        learn = 0
+        review = 0
+        for node_id in ids:
+            for _, _, start, end in db.get_records(db.DB_LEARN, node_id):
+                learn += end - start
+            for _, _, start, end in db.get_records(db.DB_REVIEW, node_id):
+                review += end - start
+        self.info_label.setText(f"TOTALLEARN: {format_seconds(learn)}    TOTALREVIEW: {format_seconds(review)}")
 
     def get_selected(self):
         if not self.selected_node:
@@ -136,25 +139,24 @@ class StatsWidget(QWidget):
             QMessageBox.warning(self, "Tip", "Please select a node")
             return
 
-        # Collect and aggregate data
+        ids = collect_ids(node)
         learn_by_date = defaultdict(int)
         review_by_date = defaultdict(int)
-        collect_history_by_date(node, "learn", learn_by_date)
-        collect_history_by_date(node, "review", review_by_date)
+        for node_id in ids:
+            for _, date, start, end in db.get_records(db.DB_LEARN, node_id):
+                learn_by_date[date] += end - start
+            for _, date, start, end in db.get_records(db.DB_REVIEW, node_id):
+                review_by_date[date] += end - start
 
-        # Last 7 days (including today)
         week_dates = get_last_n_days(7)
         week_learn = [learn_by_date.get(d, 0) for d in week_dates]
         week_review = [review_by_date.get(d, 0) for d in week_dates]
 
-        # Last 30 days (including today)
         month_dates = get_last_n_days(30)
         month_learn = [learn_by_date.get(d, 0) for d in month_dates]
         month_review = [review_by_date.get(d, 0) for d in month_dates]
 
-        # Last 12 months (including this month)
         year_months = get_last_n_months(12)
-        # aggregate by month
         learn_month_agg = defaultdict(int)
         review_month_agg = defaultdict(int)
         for d, v in learn_by_date.items():
@@ -167,7 +169,6 @@ class StatsWidget(QWidget):
         year_review = [review_month_agg.get(m, 0) for m in year_months]
 
         fig, axs = plt.subplots(3, 1, figsize=(10, 12))
-        # Week
         axs[0].plot(week_dates, week_learn, marker='o', label="Learn", color="#4F81BD")
         axs[0].plot(week_dates, week_review, marker='s', label="Review", color="#C0504D")
         axs[0].set_title("Last 7 Days Time Trend")
@@ -176,7 +177,6 @@ class StatsWidget(QWidget):
         axs[0].set_xticks(week_dates)
         axs[0].set_xticklabels(week_dates, rotation=45, ha='right')
 
-        # Month (last 30 days)
         axs[1].plot(month_dates, month_learn, marker='o', label="Learn", color="#4F81BD")
         axs[1].plot(month_dates, month_review, marker='s', label="Review", color="#C0504D")
         axs[1].set_title("Last 30 Days Time Trend")
@@ -185,7 +185,6 @@ class StatsWidget(QWidget):
         axs[1].set_xticks(month_dates[::max(1, len(month_dates)//10)])
         axs[1].set_xticklabels(month_dates[::max(1, len(month_dates)//10)], rotation=45, ha='right')
 
-        # Year (last 12 months)
         axs[2].plot(year_months, year_learn, marker='o', label="Learn", color="#4F81BD")
         axs[2].plot(year_months, year_review, marker='s', label="Review", color="#C0504D")
         axs[2].set_title("Last 12 Months Time Trend")

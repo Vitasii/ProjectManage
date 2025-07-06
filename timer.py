@@ -4,6 +4,7 @@ import time
 import datetime
 import json
 import project_tree
+import db
 
 DATA_FILE = "data.json"
 
@@ -11,19 +12,12 @@ def save_data(data):
     with open(DATA_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
 
-def find_and_update_by_name(node, target_name, mode, intervals):
-    # Recursively find and update the target node's history by name
-    if node.get("name") == target_name:
-        now = datetime.datetime.now().strftime("%Y-%m-%d")
-        history = node.setdefault("history", {})
-        mode_dict = history.setdefault(mode, {})
-        day_list = mode_dict.setdefault(now, [])
-        for s, e in intervals:
-            if e:
-                day_list.append({"start": int(s), "end": int(e)})
+def find_and_update_lastreview_by_id(node, target_id, ts):
+    if node.get("id") == target_id:
+        node["lastreview"] = ts
         return True
     for ch in node.get("children", []):
-        if find_and_update_by_name(ch, target_name, mode, intervals):
+        if find_and_update_lastreview_by_id(ch, target_id, ts):
             return True
     return False
 
@@ -33,11 +27,8 @@ class TimerWidget(QWidget):
         self.main_window = main_window
         self.setMinimumSize(400, 300)
 
-        # Center everything vertically and horizontally
         outer_layout = QVBoxLayout(self)
         outer_layout.setAlignment(Qt.AlignCenter)
-
-        # Spacer for vertical centering
         outer_layout.addItem(QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding))
 
         inner_layout = QVBoxLayout()
@@ -69,8 +60,6 @@ class TimerWidget(QWidget):
 
         inner_layout.addLayout(btn_layout)
         outer_layout.addLayout(inner_layout)
-
-        # Spacer for vertical centering
         outer_layout.addItem(QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding))
 
         self.timer = QTimer()
@@ -122,9 +111,18 @@ class TimerWidget(QWidget):
                 msg += f"{time.strftime('%H:%M:%S', time.localtime(s))} - {time.strftime('%H:%M:%S', time.localtime(e))}\n"
         QMessageBox.information(self, "Finished", msg)
         if self.current_node is not None and self.mode in ("learn", "review"):
-            data = project_tree.load_data()
-            find_and_update_by_name(data, self.current_node.get("name"), self.mode, self.intervals)
-            save_data(data)
+            node_id = self.current_node.get("id")
+            date = datetime.datetime.now().strftime("%Y-%m-%d")
+            dbfile = db.DB_LEARN if self.mode == "learn" else db.DB_REVIEW
+            for s, e in self.intervals:
+                if e:
+                    db.add_record(dbfile, node_id, date, int(s), int(e))
+            # 复习后自动更新 lastreview
+            if self.mode == "review":
+                data = project_tree.load_data()
+                ts = int(time.time())
+                find_and_update_lastreview_by_id(data, node_id, ts)
+                save_data(data)
         if self.main_window:
             self.main_window.refresh_all()
         self.label.setText("00:00:00")

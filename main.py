@@ -5,6 +5,7 @@ from timer import TimerWidget
 from project_tree import ProjectTreeWidget
 from review import ReviewWidget
 from stats import StatsWidget
+import db
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -14,18 +15,19 @@ class MainWindow(QMainWindow):
         self.stack = QStackedWidget()
         self.setCentralWidget(self.stack)
 
-        # 页面
+        db.init_db()  # 初始化数据库
+
         self.settings = SettingsWidget()
         self.project = ProjectTreeWidget(self)
         self.review = ReviewWidget(self)
         self.stats = StatsWidget(self)
-        self.timer = TimerWidget(self)  # 传递主窗口引用
+        self.timer = TimerWidget(self)
 
         self.stack.addWidget(self.settings)   # 0
         self.stack.addWidget(self.timer)      # 1
         self.stack.addWidget(self.project)    # 2
         self.stack.addWidget(self.review)     # 3
-        self.stack.addWidget(self.stats)     # 4
+        self.stack.addWidget(self.stats)      # 4
 
         menubar = QMenuBar(self)
         self.setMenuBar(menubar)
@@ -37,9 +39,6 @@ class MainWindow(QMainWindow):
             menubar.addAction(act)
 
     def show_timer(self, node, mode):
-        """切换到计时器页面，设置当前节点和结束回调
-        mode: "learn" or "review"
-        """
         self.stack.setCurrentIndex(1)
         self.timer.set_node(node, mode)
 
@@ -50,6 +49,8 @@ class MainWindow(QMainWindow):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
+    from PyQt5.QtGui import QFont
+    app.setFont(QFont("霞鹜文楷", 12))  # 这里设置全局字体和字号
     win = MainWindow()
     win.show()
     sys.exit(app.exec_())

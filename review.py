@@ -1,9 +1,10 @@
-import json, os
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QGraphicsView, QGraphicsScene, QMenu, QInputDialog, QMessageBox
+import json, os, time, datetime
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QGraphicsView, QGraphicsScene, QMenu, QInputDialog, QMessageBox, QLabel
 from PyQt5.QtCore import Qt
 from tree_base import NodeItem, EdgeLine
 from settings import load_settings
 from PyQt5.QtGui import QPainter
+import db
 
 DATA_FILE = "data.json"
 
@@ -11,15 +12,42 @@ def load_data():
     if os.path.exists(DATA_FILE):
         with open(DATA_FILE, "r", encoding="utf-8") as f:
             return json.load(f)
-    return {"name": "Root", "children": [], "pos": [0, 0], "done": False, "history": {"learn": {}, "review": {}}}
+    return {"name": "Root", "id": "root", "children": [], "pos": [0, 0], "done": False, "lastreview": 0, "review_state": False}
+
+def save_data(data):
+    with open(DATA_FILE, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+def ensure_ids(node):
+    import uuid
+    if "id" not in node:
+        node["id"] = str(uuid.uuid4())
+    for ch in node.get("children", []):
+        ensure_ids(ch)
+
+def human_time(ts):
+    if not ts:
+        return "无"
+    return datetime.datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M")
 
 def total_review_time(node):
-    self_time = sum(
-        e["end"] - e["start"]
-        for day in node.get("history", {}).get("review", {}).values()
-        for e in day
-    )
-    return self_time + sum(total_review_time(ch) for ch in node.get("children", []))
+    ids = []
+    def collect_ids(n):
+        ids.append(n.get("id"))
+        for ch in n.get("children", []):
+            collect_ids(ch)
+    collect_ids(node)
+    total = 0
+    for node_id in ids:
+        for _, _, start, end in db.get_records(db.DB_REVIEW, node_id):
+            total += end - start
+    return total
+
+def format_seconds(seconds):
+    h = seconds // 3600
+    m = (seconds % 3600) // 60
+    s = seconds % 60
+    return f"{h}h {m}m {s}s"
 
 class ReviewWidget(QWidget):
     def __init__(self, main_window):
@@ -27,11 +55,16 @@ class ReviewWidget(QWidget):
         self.main_window = main_window
         self.settings = load_settings()
         self.data = load_data()
+        ensure_ids(self.data)
+        save_data(self.data)
         layout = QVBoxLayout(self)
         self.scene = QGraphicsScene()
-        self.view = QGraphicsView(self.scene)
+        from tree_base import ZoomableGraphicsView
+        self.view = ZoomableGraphicsView(self.scene)
         self.view.setRenderHint(QPainter.Antialiasing)
         layout.addWidget(self.view)
+        self.suggest_label = QLabel()
+        layout.addWidget(self.suggest_label)
         self.node_items = []
         self.selected_node = None
         self.edges = []
@@ -41,6 +74,7 @@ class ReviewWidget(QWidget):
 
     def refresh(self):
         self.data = load_data()
+        ensure_ids(self.data)
         self.scene.clear()
         self.node_items = []
         self.edges = []
@@ -50,19 +84,19 @@ class ReviewWidget(QWidget):
             node_x = x - width/2 + idx * x_offset if siblings > 1 else x
             node["pos"] = [node_x, y]
             for i, ch in enumerate(node.get("children", [])):
-                layout_tree(ch, depth+1, node_x, len(node["children"]), i, x_offset, y_offset)
-        def all_overlap(node):
-            if node.get("pos", [0,0]) != [0,0]:
-                return False
-            return all(all_overlap(ch) for ch in node.get("children", []))
-        if all_overlap(self.data):
-            layout_tree(self.data)
+                layout_tree(ch, depth+1, node_x, len(node.get("children", [])), i)
+        layout_tree(self.data)
+
         def draw_tree(node, parent_item=None):
-            color = self.settings["review_active"] if any(node.get("history", {}).get("review", {}).values()) else self.settings["review_inactive"]
-            total_review = total_review_time(node)
-            item = NodeItem(node, color)
-            item.node_text = lambda: f'{node["name"]}\nReview:{int(total_review)}s'
-            item.text.setPlainText(item.node_text())
+            color = "#4fc3f7" if node.get("review_state") else "#A0A0A0"
+            review_sec = total_review_time(node)
+            if node.get("review_state"):
+                period = node.get("period", None)
+                period_str = f"\nPeriod:{period}DAY" if period else ""
+                text = f'{node["name"]}{period_str}\nLast:{human_time(node.get("lastreview",0))}\nReview:{format_seconds(review_sec)}'
+            else:
+                text = f'{node["name"]}\nReview:{format_seconds(review_sec)}'
+            item = NodeItem(node, color, text)
             self.scene.addItem(item)
             self.node_items.append(item)
             if parent_item:
@@ -72,61 +106,48 @@ class ReviewWidget(QWidget):
             for ch in node.get("children", []):
                 draw_tree(ch, item)
         draw_tree(self.data)
-        self.view.setSceneRect(self.scene.itemsBoundingRect().adjusted(-100, -100, 100, 100))
-        for item in self.node_items:
-            item.update_lines = self.update_all_edges
-
-    def update_all_edges(self):
-        for edge in self.edges:
-            edge.update_position()
+        self.show_suggest()
 
     def get_selected(self):
-        if not self.selected_node:
-            return None, None
-        def find_parent(data, target):
-            for ch in data.get("children", []):
-                if ch is target:
-                    return data
-                res = find_parent(ch, target)
-                if res:
-                    return res
-            return None
-        parent = find_parent(self.data, self.selected_node)
-        return self.selected_node, parent
+        if self.selected_node:
+            def find_parent(data, target):
+                for ch in data.get("children", []):
+                    if ch is target:
+                        return data
+                    res = find_parent(ch, target)
+                    if res:
+                        return res
+                return None
+            parent = find_parent(self.data, self.selected_node)
+            return self.selected_node, parent
+        return None, None
 
-    def add_node(self):
+    def set_review(self):
         node, _ = self.get_selected()
         if node is None:
-            node = self.data
-        name, ok = QInputDialog.getText(self, "Add Children", "Name:")
-        if ok and name:
-            if "children" not in node:
-                node["children"] = []
-            px, py = node.get("pos", [0, 0])
-            node["children"].append({
-                "name": name, "children": [], "pos": [px, py+120], "done": False, "history": {"learn": {}, "review": {}}
-            })
-            with open(DATA_FILE, "w", encoding="utf-8") as f:
-                json.dump(self.data, f, ensure_ascii=False, indent=2)
-            self.main_window.refresh_all()
+            return
+        period, ok = QInputDialog.getInt(self, "Review_Period", "SuggestedDays(天):", value=node.get("period", 1), min=1)
+        if not ok:
+            return
+        node["review_state"] = True
+        node["period"] = period
+        save_data(self.data)
+        self.main_window.refresh_all()
 
-    def del_node(self):
-        node, parent = self.get_selected()
-        if node is None or parent is None:
-            QMessageBox.warning(self, "Warning", "Not allowed to delete root node")
+    def unset_review(self):
+        node, _ = self.get_selected()
+        if node is None:
             return
-        if node.get("children"):
-            QMessageBox.warning(self, "Warning", "Cannot delete node with children")
-            return
-        parent["children"] = [ch for ch in parent["children"] if ch is not node]
-        with open(DATA_FILE, "w", encoding="utf-8") as f:
-            json.dump(self.data, f, ensure_ascii=False, indent=2)
+        node["review_state"] = False
+        if "period" in node:
+            del node["period"]
+        save_data(self.data)
         self.main_window.refresh_all()
 
     def start_review(self):
         node, _ = self.get_selected()
-        if node is None:
-            QMessageBox.warning(self, "Warning", "Please select a node to review")
+        if node is None or not node.get("review_state"):
+            QMessageBox.warning(self, "Warning", "Please select a node in review state")
             return
         self.main_window.show_timer(node, "review")
 
@@ -141,7 +162,25 @@ class ReviewWidget(QWidget):
             return
         self.selected_node = clicked_item.node_data
         menu = QMenu(self)
-        menu.addAction("Add Children", self.add_node)
-        menu.addAction("Delete Children", self.del_node)
+        if not self.selected_node.get("review_state"):
+            menu.addAction("Set Review", self.set_review)
+        else:
+            menu.addAction("Unset Review", self.unset_review)
         menu.addAction("Start Review", self.start_review)
         menu.exec_(self.view.mapToGlobal(pos))
+
+    def show_suggest(self):
+        now = int(time.time())
+        nodes = []
+        def collect(node):
+            if node.get("review_state"):
+                period = node.get("period", 1)
+                lastreview = node.get("lastreview", 0)
+                due = (now - lastreview) / (period * 86400) if period else 0
+                nodes.append((due, node))
+            for ch in node.get("children", []):
+                collect(ch)
+        collect(self.data)
+        nodes.sort(reverse=True, key=lambda x: x[0])
+        suggest = [f'{n["name"]} (Period{n.get("period",1)}DAY, Last:{human_time(n.get("lastreview",0))})' for _, n in nodes[:10]]
+        self.suggest_label.setText("Suggest:\n" + "\n".join(suggest) if suggest else "All Perfect")
