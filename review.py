@@ -78,13 +78,32 @@ class ReviewWidget(QWidget):
         self.scene.clear()
         self.node_items = []
         self.edges = []
-        def layout_tree(node, depth=0, x=0, siblings=1, idx=0, x_offset=180, y_offset=120):
+        x_offset = int(self.settings.get("tree_x_offset", 300))
+        y_offset = int(self.settings.get("tree_y_offset", 120))
+
+        def calc_width(node):
+            if not node.get("children"):
+                node["_subtree_width"] = 1
+                return 1
+            width = 0
+            for ch in node["children"]:
+                width += calc_width(ch)
+            node["_subtree_width"] = width
+            return width
+
+        def layout_tree(node, depth=0, x=0):
             y = depth * y_offset
-            width = x_offset * (siblings - 1)
-            node_x = x - width/2 + idx * x_offset if siblings > 1 else x
-            node["pos"] = [node_x, y]
-            for i, ch in enumerate(node.get("children", [])):
-                layout_tree(ch, depth+1, node_x, len(node.get("children", [])), i)
+            width = node.get("_subtree_width", 1)
+            left = x - (width / 2.0) * x_offset + x_offset / 2.0
+            cur_x = left
+            node["pos"] = [x, y]
+            for ch in node.get("children", []):
+                w = ch.get("_subtree_width", 1)
+                child_center = cur_x + (w / 2.0) * x_offset - x_offset / 2.0
+                layout_tree(ch, depth + 1, child_center)
+                cur_x += w * x_offset
+
+        calc_width(self.data)
         layout_tree(self.data)
 
         def draw_tree(node, parent_item=None):

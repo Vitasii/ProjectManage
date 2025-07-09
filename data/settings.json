@@ -2,5 +2,7 @@
   "project_unfinished": "#A0A0A0",
   "project_finished": "#ff5500",
   "review_active": "#ff557f",
-  "review_inactive": "#A0A0A0"
+  "review_inactive": "#A0A0A0",
+  "tree_x_offset": 230,
+  "tree_y_offset": 120
 }

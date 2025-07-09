@@ -1,12 +1,14 @@
 import json, os
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QColorDialog, QPushButton
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QColorDialog, QPushButton, QSpinBox, QHBoxLayout
 
 SETTINGS_FILE = "data/settings.json"
 DEFAULT_COLORS = {
     "project_unfinished": "#A0A0A0",
     "project_finished": "#90EE90",
     "review_active": "#ffd54f",
-    "review_inactive": "#A0A0A0"
+    "review_inactive": "#A0A0A0",
+    "tree_x_offset": 300,
+    "tree_y_offset": 120
 }
 
 def load_settings():
@@ -25,6 +27,7 @@ class SettingsWidget(QWidget):
         self.colors = load_settings()
         layout = QVBoxLayout(self)
         self.labels = {}
+        # 颜色设置
         for key, label in [
             ("project_unfinished", "Project_unfinished Color"),
             ("project_finished", "Project_finished Color"),
@@ -37,6 +40,29 @@ class SettingsWidget(QWidget):
             layout.addWidget(l)
             layout.addWidget(btn)
             self.labels[key] = l
+
+        # tree_x_offset 设置
+        x_layout = QHBoxLayout()
+        x_label = QLabel("Tree X Offset:")
+        self.x_spin = QSpinBox()
+        self.x_spin.setRange(50, 1000)
+        self.x_spin.setValue(int(self.colors.get("tree_x_offset", 300)))
+        self.x_spin.valueChanged.connect(self.save_offsets)
+        x_layout.addWidget(x_label)
+        x_layout.addWidget(self.x_spin)
+        layout.addLayout(x_layout)
+
+        # tree_y_offset 设置
+        y_layout = QHBoxLayout()
+        y_label = QLabel("Tree Y Offset:")
+        self.y_spin = QSpinBox()
+        self.y_spin.setRange(50, 1000)
+        self.y_spin.setValue(int(self.colors.get("tree_y_offset", 120)))
+        self.y_spin.valueChanged.connect(self.save_offsets)
+        y_layout.addWidget(y_label)
+        y_layout.addWidget(self.y_spin)
+        layout.addLayout(y_layout)
+
         self.setLayout(layout)
 
     def change_color(self, key, label):
@@ -45,3 +71,8 @@ class SettingsWidget(QWidget):
             self.colors[key] = color.name()
             label.setText(f"{label.text().split(':')[0]}: {color.name()}")
             save_settings(self.colors)
+
+    def save_offsets(self):
+        self.colors["tree_x_offset"] = self.x_spin.value()
+        self.colors["tree_y_offset"] = self.y_spin.value()
+        save_settings(self.colors)

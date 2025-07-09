@@ -11,12 +11,13 @@
           "id": "a3e7c90d-61f8-425f-9860-96c503faabe3",
           "children": [],
           "pos": [
-            -720.0,
+            -920.0,
             240
           ],
           "done": false,
           "lastreview": 0,
-          "review_state": false
+          "review_state": false,
+          "_subtree_width": 1
         },
         {
           "name": "Learning",
@@ -27,30 +28,33 @@
               "id": "1b647969-160e-4e85-a3d7-8464e41f6c1a",
               "children": [],
               "pos": [
-                -540.0,
+                -690.0,
                 360
               ],
               "done": false,
               "lastreview": 0,
-              "review_state": false
+              "review_state": false,
+              "_subtree_width": 1
             }
           ],
           "pos": [
-            -540.0,
+            -690.0,
             240
           ],
           "done": false,
           "lastreview": 0,
-          "review_state": false
+          "review_state": false,
+          "_subtree_width": 1
         }
       ],
       "pos": [
-        -630.0,
+        -805.0,
         120
       ],
       "done": false,
       "lastreview": 0,
-      "review_state": false
+      "review_state": false,
+      "_subtree_width": 2
     },
     {
       "name": "English Learning",
@@ -65,30 +69,33 @@
               "id": "10bc541e-4318-4f9b-be3a-515a066f639f",
               "children": [],
               "pos": [
-                -450.0,
+                -460.0,
                 360
               ],
               "done": false,
               "lastreview": 0,
-              "review_state": false
+              "review_state": false,
+              "_subtree_width": 1
             }
           ],
           "pos": [
-            -450.0,
+            -460.0,
             240
           ],
           "done": false,
           "lastreview": 0,
-          "review_state": false
+          "review_state": false,
+          "_subtree_width": 1
         }
       ],
       "pos": [
-        -450.0,
+        -460.0,
         120
       ],
       "done": false,
       "lastreview": 0,
-      "review_state": false
+      "review_state": false,
+      "_subtree_width": 1
     },
     {
       "name": "Japanese Learning",
@@ -99,21 +106,23 @@
           "id": "cc6b62f8-78ec-4fdf-8532-66622f3c4b33",
           "children": [],
           "pos": [
-            -270.0,
+            -230.0,
             240
           ],
           "done": false,
           "lastreview": 0,
-          "review_state": false
+          "review_state": false,
+          "_subtree_width": 1
         }
       ],
       "pos": [
-        -270.0,
+        -230.0,
         120
       ],
       "done": false,
       "lastreview": 0,
-      "review_state": false
+      "review_state": false,
+      "_subtree_width": 1
     },
     {
       "name": "Music",
@@ -128,42 +137,46 @@
               "id": "65cc8fa6-e8de-497a-9a68-afefef5fb4a4",
               "children": [],
               "pos": [
-                -180.0,
+                0.0,
                 360
               ],
               "done": false,
               "lastreview": 0,
-              "review_state": false
+              "review_state": false,
+              "_subtree_width": 1
             }
           ],
-          "pos": [
-            -180.0,
-            240
-          ],
-          "done": false,
-          "lastreview": 0,
-          "review_state": false
-        },
-        {
-          "name": "技巧学习",
-          "id": "d951ad99-8fa2-40e4-9aa7-31d398be24fc",
-          "children": [],
           "pos": [
             0.0,
             240
           ],
           "done": false,
           "lastreview": 0,
-          "review_state": false
+          "review_state": false,
+          "_subtree_width": 1
+        },
+        {
+          "name": "技巧学习",
+          "id": "d951ad99-8fa2-40e4-9aa7-31d398be24fc",
+          "children": [],
+          "pos": [
+            230.0,
+            240
+          ],
+          "done": false,
+          "lastreview": 0,
+          "review_state": false,
+          "_subtree_width": 1
         }
       ],
       "pos": [
-        -90.0,
+        115.0,
         120
       ],
       "done": false,
       "lastreview": 0,
-      "review_state": false
+      "review_state": false,
+      "_subtree_width": 2
     },
     {
       "name": "Running",
@@ -174,21 +187,23 @@
           "id": "16136e2d-2a49-4b08-b9b1-524efe51e0ef",
           "children": [],
           "pos": [
-            90.0,
+            460.0,
             240
           ],
           "done": false,
           "lastreview": 0,
-          "review_state": false
+          "review_state": false,
+          "_subtree_width": 1
         }
       ],
       "pos": [
-        90.0,
+        460.0,
         120
       ],
       "done": false,
       "lastreview": 0,
-      "review_state": false
+      "review_state": false,
+      "_subtree_width": 1
     },
     {
       "name": "Arms",
@@ -199,21 +214,23 @@
           "id": "3615ec83-7a0f-4970-98c4-fb57e5f9d56a",
           "children": [],
           "pos": [
-            270.0,
+            690.0,
             240
           ],
           "done": false,
           "lastreview": 0,
-          "review_state": false
+          "review_state": false,
+          "_subtree_width": 1
         }
       ],
       "pos": [
-        270.0,
+        690.0,
         120
       ],
       "done": false,
       "lastreview": 0,
-      "review_state": false
+      "review_state": false,
+      "_subtree_width": 1
     },
     {
       "name": "STS",
@@ -224,21 +241,23 @@
           "id": "c3f78335-77be-4cbc-b5e3-f404587b11a5",
           "children": [],
           "pos": [
-            450.0,
+            920.0,
             240
           ],
           "done": false,
           "lastreview": 0,
-          "review_state": false
+          "review_state": false,
+          "_subtree_width": 1
         }
       ],
       "pos": [
-        450.0,
+        920.0,
         120
       ],
       "done": false,
       "lastreview": 0,
-      "review_state": false
+      "review_state": false,
+      "_subtree_width": 1
     }
   ],
   "pos": [
@@ -247,5 +266,6 @@
   ],
   "done": false,
   "lastreview": 0,
-  "review_state": false
+  "review_state": false,
+  "_subtree_width": 9
 }

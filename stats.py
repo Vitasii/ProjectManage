@@ -83,14 +83,34 @@ class StatsWidget(QWidget):
         self.scene.clear()
         self.node_items = []
         self.edges = []
-        def layout_tree(node, depth=0, x=0, siblings=1, idx=0, x_offset=180, y_offset=120):
+        x_offset = int(self.settings.get("tree_x_offset", 300))
+        y_offset = int(self.settings.get("tree_y_offset", 120))
+
+        def calc_width(node):
+            if not node.get("children"):
+                node["_subtree_width"] = 1
+                return 1
+            width = 0
+            for ch in node["children"]:
+                width += calc_width(ch)
+            node["_subtree_width"] = width
+            return width
+
+        def layout_tree(node, depth=0, x=0):
             y = depth * y_offset
-            width = x_offset * (siblings - 1)
-            node_x = x - width/2 + idx * x_offset if siblings > 1 else x
-            node["pos"] = [node_x, y]
-            for i, ch in enumerate(node.get("children", [])):
-                layout_tree(ch, depth+1, node_x, len(node["children"]), i, x_offset, y_offset)
+            width = node.get("_subtree_width", 1)
+            left = x - (width / 2.0) * x_offset + x_offset / 2.0
+            cur_x = left
+            node["pos"] = [x, y]
+            for ch in node.get("children", []):
+                w = ch.get("_subtree_width", 1)
+                child_center = cur_x + (w / 2.0) * x_offset - x_offset / 2.0
+                layout_tree(ch, depth + 1, child_center)
+                cur_x += w * x_offset
+
+        calc_width(self.data)
         layout_tree(self.data)
+
         def draw_tree(node, parent_item=None):
             color = self.settings["project_finished"] if node.get("done") else self.settings["project_unfinished"]
             learn, review = node_learn_review_time(node)
@@ -193,6 +213,44 @@ class StatsWidget(QWidget):
         axs[2].set_xticks(year_months)
         axs[2].set_xticklabels(year_months, rotation=45, ha='right')
 
+        plt.tight_layout()
+        plt.show()
+
+        # ==== 新增百分比图 ====
+        import numpy as np
+
+        def plot_percent_pie(ax, node, days, title):
+            # 只统计直接子节点
+            if not node.get("children"):
+                return
+            end_date = datetime.date.today()
+            start_date = end_date - datetime.timedelta(days=days-1)
+            child_names = []
+            child_times = []
+            for ch in node["children"]:
+                ids = collect_ids(ch)
+                total = 0
+                for node_id in ids:
+                    for _, date, start, end in db.get_records(db.DB_LEARN, node_id):
+                        d = datetime.datetime.strptime(date, "%Y-%m-%d").date()
+                        if start_date <= d <= end_date:
+                            total += end - start
+                if total > 0:  # 只添加时长大于0的
+                    child_names.append(ch["name"])
+                    child_times.append(total)
+            total_time = sum(child_times)
+            if total_time == 0:
+                ax.set_title(title + " (No Data)")
+                return
+            percent = np.array(child_times) / total_time
+            ax.pie(percent, labels=child_names, autopct='%1.1f%%', startangle=90)
+            ax.set_title(title)
+
+        fig2, axs2 = plt.subplots(2, 2, figsize=(12, 10))
+        plot_percent_pie(axs2[0,0], node, 1, "Today")
+        plot_percent_pie(axs2[0,1], node, 7, "Last 7 Days")
+        plot_percent_pie(axs2[1,0], node, 30, "Last 30 Days")
+        plot_percent_pie(axs2[1,1], node, 365, "Last 1 Year")
         plt.tight_layout()
         plt.show()
 

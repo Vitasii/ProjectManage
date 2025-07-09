@@ -70,15 +70,37 @@ class ProjectTreeWidget(QWidget):
         self.scene.clear()
         self.node_items = []
         self.edges = []
-        def layout_tree(node, depth=0, x=0, siblings=1, idx=0, x_offset=180, y_offset=120):
+        x_offset = int(self.settings.get("tree_x_offset", 300))
+        y_offset = int(self.settings.get("tree_y_offset", 120))
+
+        # 递归计算每棵子树的宽度
+        def calc_width(node):
+            if not node.get("children"):
+                node["_subtree_width"] = 1
+                return 1
+            width = 0
+            for ch in node["children"]:
+                width += calc_width(ch)
+            node["_subtree_width"] = width
+            return width
+
+        # 递归布局，避免重叠
+        def layout_tree(node, depth=0, x=0):
             y = depth * y_offset
-            width = x_offset * (siblings - 1)
-            node_x = x - width/2 + idx * x_offset if siblings > 1 else x
-            node["pos"] = [node_x, y]
-            for i, ch in enumerate(node.get("children", [])):
-                layout_tree(ch, depth+1, node_x, len(node.get("children", [])), i)
+            width = node.get("_subtree_width", 1)
+            left = x - (width / 2.0) * x_offset + x_offset / 2.0
+            cur_x = left
+            node["pos"] = [x, y]
+            for ch in node.get("children", []):
+                w = ch.get("_subtree_width", 1)
+                child_center = cur_x + (w / 2.0) * x_offset - x_offset / 2.0
+                layout_tree(ch, depth + 1, child_center)
+                cur_x += w * x_offset
+
+        calc_width(self.data)
         layout_tree(self.data)
 
+        # draw_tree部分保持不变
         def draw_tree(node, parent_item=None):
             color = "#ffd54f" if node.get("is_root_task") else ("#90EE90" if node.get("done") else "#A0A0A0")
             learn_sec = total_learn_time(node)
@@ -166,6 +188,19 @@ class ProjectTreeWidget(QWidget):
             save_data(self.data)
             self.main_window.refresh_all()
 
+    def move_node(self, direction):
+        node, parent = self.get_selected()
+        if node is None or parent is None:
+            QMessageBox.warning(self, "Warning", "请选择非根节点")
+            return
+        siblings = parent["children"]
+        idx = siblings.index(node)
+        new_idx = idx + direction
+        if 0 <= new_idx < len(siblings):
+            siblings[idx], siblings[new_idx] = siblings[new_idx], siblings[idx]
+            save_data(self.data)
+            self.main_window.refresh_all()
+
     def show_context_menu(self, pos):
         view_pos = self.view.mapToScene(pos)
         clicked_item = None
@@ -182,4 +217,7 @@ class ProjectTreeWidget(QWidget):
         menu.addAction("Rename Node", self.rename_node)
         menu.addAction("Toggle Done/Undone", self.toggle_done)
         menu.addAction("Start Learning", self.start_study)
+        # 新增左右移动
+        menu.addAction("Move Left", lambda: self.move_node(-1))
+        menu.addAction("Move Right", lambda: self.move_node(1))
         menu.exec_(self.view.mapToGlobal(pos))

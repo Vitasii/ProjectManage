@@ -74,6 +74,13 @@ class TimerWidget(QWidget):
         self.btn_pause.clicked.connect(self.pause)
         self.btn_end.clicked.connect(self.end)
 
+        # 状态标签
+        self.status_label = QLabel("Stopped")
+        self.status_label.setAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
+        outer_layout.addWidget(self.status_label)
+
+        self.timer_state = "Stopped"  # 可选: "Stopped", "Ongoing", "Paused"
+
     def set_node(self, node, mode):
         self.current_node = node
         self.mode = mode
@@ -81,6 +88,10 @@ class TimerWidget(QWidget):
         self.start_time = None
         self.paused = False
         self.intervals = []
+
+    def set_status(self, state):
+        self.timer_state = state
+        self.status_label.setText(state)
 
     def start(self):
         if not self.start_time:
@@ -91,12 +102,14 @@ class TimerWidget(QWidget):
             resume_time = time.time()
             self.intervals.append((resume_time, None))
         self.timer.start(1000)
+        self.set_status("Ongoing")
 
     def pause(self):
         if not self.paused and self.start_time:
             self.paused = True
             self.intervals[-1] = (self.intervals[-1][0], time.time())
             self.timer.stop()
+            self.set_status("Paused")
 
     def end(self):
         if not self.start_time:
@@ -131,6 +144,7 @@ class TimerWidget(QWidget):
         self.intervals = []
         self.current_node = None
         self.mode = None
+        self.set_status("Stopped")
 
     def update_time(self):
         if not self.start_time:
