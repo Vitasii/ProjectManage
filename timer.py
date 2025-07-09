@@ -6,7 +6,7 @@ import json
 import project_tree
 import db
 
-DATA_FILE = "data.json"
+DATA_FILE = "data/data.json"
 
 def save_data(data):
     with open(DATA_FILE, "w", encoding="utf-8") as f:

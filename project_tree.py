@@ -6,7 +6,7 @@ from settings import load_settings
 from PyQt5.QtGui import QPainter
 import db
 
-DATA_FILE = "data.json"
+DATA_FILE = "data/data.json"
 
 def load_data():
     if os.path.exists(DATA_FILE):

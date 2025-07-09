@@ -1,8 +1,8 @@
 import sqlite3
 import os
 
-DB_LEARN = "learn.db"
-DB_REVIEW = "review.db"
+DB_LEARN = "data/learn.db"
+DB_REVIEW = "data/review.db"
 
 def init_db():
     for dbfile in [DB_LEARN, DB_REVIEW]:

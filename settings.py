@@ -1,7 +1,7 @@
 import json, os
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QColorDialog, QPushButton
 
-SETTINGS_FILE = "settings.json"
+SETTINGS_FILE = "data/settings.json"
 DEFAULT_COLORS = {
     "project_unfinished": "#A0A0A0",
     "project_finished": "#90EE90",

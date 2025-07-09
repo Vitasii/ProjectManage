@@ -10,7 +10,7 @@ import datetime
 from collections import defaultdict
 import db
 
-DATA_FILE = "data.json"
+DATA_FILE = "data/data.json"
 
 def load_data():
     if os.path.exists(DATA_FILE):
