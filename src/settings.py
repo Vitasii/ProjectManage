@@ -8,7 +8,8 @@ DEFAULT_COLORS = {
     "start_review_color": "#ffd54f",
     "toggle_done_color_stat": "#90caf9",
     "tree_x_offset": 300,
-    "tree_y_offset": 120
+    "tree_y_offset": 120,
+    "timeline_num_segments": 9
 }
 
 def load_settings():
@@ -70,7 +71,22 @@ class SettingsWidget(QWidget):
         y_layout.addWidget(self.y_spin)
         layout.addLayout(y_layout)
 
+        # 时间线图数量设置
+        timeline_layout = QHBoxLayout()
+        timeline_label = QLabel("Timeline Segments (时间线图数量):")
+        timeline_label.setStyleSheet("font-family: '霞鹜文楷'; font-size: 20px;")
+        self.timeline_spin = QSpinBox()
+        self.timeline_spin.setStyleSheet("font-family: '霞鹜文楷'; font-size: 20px;")
+        self.timeline_spin.setRange(1, 24)
+        self.timeline_spin.setValue(int(self.colors.get("timeline_num_segments", 9)))
+        self.timeline_spin.valueChanged.connect(self.save_timeline_num_segments)
+        timeline_layout.addWidget(timeline_label)
+        timeline_layout.addWidget(self.timeline_spin)
+        layout.addLayout(timeline_layout)
         self.setLayout(layout)
+    def save_timeline_num_segments(self):
+        self.colors["timeline_num_segments"] = self.timeline_spin.value()
+        save_settings(self.colors)
 
     def change_color(self, key, label):
         color = QColorDialog.getColor()

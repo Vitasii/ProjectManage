@@ -1,10 +1,21 @@
+
 import sqlite3
 import os
 
-DB_LEARN = "data/learn.db"
-DB_REVIEW = "data/review.db"
+def get_base_dir():
+    import sys
+    if getattr(sys, 'frozen', False):
+        return os.path.dirname(sys.executable)
+    else:
+        return os.path.dirname(os.path.abspath(__file__))
+
+DB_LEARN = os.path.join(get_base_dir(), 'data', 'learn.db')
+DB_REVIEW = os.path.join(get_base_dir(), 'data', 'review.db')
 
 def init_db():
+    data_dir = os.path.dirname(DB_LEARN)
+    if not os.path.exists(data_dir):
+        os.makedirs(data_dir, exist_ok=True)
     for dbfile in [DB_LEARN, DB_REVIEW]:
         if not os.path.exists(dbfile):
             conn = sqlite3.connect(dbfile)

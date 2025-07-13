@@ -135,6 +135,7 @@ class ReviewWidget(QWidget):
             for ch in node.get("children", []):
                 draw_tree(ch, item)
         draw_tree(self.data)
+        self.show_suggest()
 
     def change_node_color(self):
         node = self.selected_node
@@ -204,6 +205,11 @@ class ReviewWidget(QWidget):
         menu = QMenu(self)
         # Start Review 作为主菜单第一个选项
         menu.addAction("Start Review", self.start_review)
+        # 只显示 Set Review 或 Unset Review
+        if self.selected_node.get("review_state"):
+            menu.addAction("Unset Review", self.unset_review)
+        else:
+            menu.addAction("Set Review", self.set_review)
         # Color 子菜单
         color_menu = menu.addMenu("Color")
         color_menu.addAction("Change Color", self.change_node_color)

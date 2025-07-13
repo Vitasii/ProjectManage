@@ -1,4 +1,6 @@
 import sys
+from PyQt5.QtCore import Qt, QCoreApplication
+QCoreApplication.setAttribute(Qt.AA_ShareOpenGLContexts)
 from PyQt5.QtWidgets import QApplication, QMainWindow, QStackedWidget, QAction, QMenuBar
 from settings import SettingsWidget
 from timer import TimerWidget
@@ -22,17 +24,20 @@ class MainWindow(QMainWindow):
         self.review = ReviewWidget(self)
         self.stats = StatsWidget(self)
         self.timer = TimerWidget(self)
+        from timeline_plotly import TimelinePlotlyWidget
+        self.timeline_plotly = TimelinePlotlyWidget(self)
 
         self.stack.addWidget(self.settings)   # 0
         self.stack.addWidget(self.timer)      # 1
         self.stack.addWidget(self.project)    # 2
         self.stack.addWidget(self.review)     # 3
-        self.stack.addWidget(self.stats)      # 4
+        self.stack.addWidget(self.stats)      # 4  # 5
+        self.stack.addWidget(self.timeline_plotly)   # 6
 
         menubar = QMenuBar(self)
         self.setMenuBar(menubar)
-        pages = ["Settings", "Timer", "Projects", "Review", "Stats"]
-        page_indices = [0, 1, 2, 3, 4]
+        pages = ["Settings", "Timer", "Projects", "Review", "Stats", "Timeline"]
+        page_indices = [0, 1, 2, 3, 4, 5, 6]
         for i, name in enumerate(pages):
             act = QAction(name, self)
             act.triggered.connect(lambda _, idx=page_indices[i]: self.stack.setCurrentIndex(idx))
