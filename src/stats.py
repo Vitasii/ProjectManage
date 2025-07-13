@@ -1,4 +1,4 @@
-import json, os
+import json, os, sys
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QGraphicsView, QGraphicsScene, QMenu, QMessageBox, QLabel
 from PyQt5.QtCore import Qt
 from tree_base import NodeItem, EdgeLine
@@ -10,7 +10,13 @@ import datetime
 from collections import defaultdict
 import db
 
-DATA_FILE = "data/data.json"
+def get_base_dir():
+    if getattr(sys, 'frozen', False):
+        return os.path.dirname(sys.executable)
+    else:
+        return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+DATA_FILE = os.path.join(get_base_dir(), "data", "data.json")
 
 def load_data():
     if os.path.exists(DATA_FILE):

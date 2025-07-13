@@ -1,9 +1,12 @@
 import sys
+import os
+
 def get_base_dir():
     if getattr(sys, 'frozen', False):
         return os.path.dirname(sys.executable)
     else:
-        return os.path.dirname(__file__)
+        return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
 import datetime
 from PyQt5.QtWidgets import QWidget, QVBoxLayout
 import plotly.graph_objects as go
@@ -60,18 +63,50 @@ class TimelinePlotlyWidget(QWidget):
             self.num_segments = int(settings.get("timeline_num_segments", 9)) if num_segments is None else num_segments
         except Exception:
             self.num_segments = num_segments if num_segments is not None else 9
-        from PyQt5.QtWidgets import QScrollArea, QWidget, QVBoxLayout
+        
+        # 主布局
+        main_layout = QVBoxLayout(self)
+        
+        # 添加更新按钮
+        from PyQt5.QtWidgets import QPushButton, QHBoxLayout
+        button_layout = QHBoxLayout()
+        self.update_button = QPushButton("更新时间线")
+        self.update_button.setStyleSheet("font-family: '霞鹜文楷'; font-size: 16px; padding: 5px 15px;")
+        self.update_button.clicked.connect(self.refresh_timeline)
+        button_layout.addWidget(self.update_button)
+        button_layout.addStretch()
+        main_layout.addLayout(button_layout)
+        
+        # 滚动区域
+        from PyQt5.QtWidgets import QScrollArea, QWidget
         self.scroll = QScrollArea(self)
         self.scroll.setWidgetResizable(True)
         self.container = QWidget()
-        layout = QVBoxLayout(self.container)
-        self.container.setLayout(layout)
+        self.layout = QVBoxLayout(self.container)
+        self.container.setLayout(self.layout)
         self.scroll.setWidget(self.container)
-        main_layout = QVBoxLayout(self)
         main_layout.addWidget(self.scroll)
+        
         self.setLayout(main_layout)
-        self.show_timeline(layout)
+        self.show_timeline(self.layout)
         # 页面加载后滚动到底部
+        from PyQt5.QtCore import QTimer
+        def scroll_to_bottom():
+            self.scroll.verticalScrollBar().setValue(self.scroll.verticalScrollBar().maximum())
+        QTimer.singleShot(300, scroll_to_bottom)
+
+    def refresh_timeline(self):
+        """刷新时间线数据"""
+        # 清空现有内容
+        for i in reversed(range(self.layout.count())):
+            child = self.layout.itemAt(i).widget()
+            if child:
+                child.setParent(None)
+        
+        # 重新生成时间线
+        self.show_timeline(self.layout)
+        
+        # 滚动到底部
         from PyQt5.QtCore import QTimer
         def scroll_to_bottom():
             self.scroll.verticalScrollBar().setValue(self.scroll.verticalScrollBar().maximum())
@@ -120,7 +155,7 @@ class TimelinePlotlyWidget(QWidget):
         from PyQt5.QtCore import QUrl
         webviews = []
         # 新建 timeline_html 文件夹
-        html_dir = os.path.join(get_base_dir(), "src", "timeline_html")
+        html_dir = os.path.join(get_base_dir(), "timeline_html")
         if not os.path.exists(html_dir):
             os.makedirs(html_dir)
         for idx, (seg_start, seg_end) in enumerate(segments):
@@ -158,9 +193,14 @@ class TimelinePlotlyWidget(QWidget):
                         mode="lines",
                         line=dict(color=type_color.get(iv["type"], "#888"), width=12),
                         hovertemplate=(
-                            f"{iv['task']}<br>时长: {duration_str}<br>开始: {iv['start'].strftime('%Y-%m-%d %H:%M:%S')}<br>结束: {iv['end'].strftime('%Y-%m-%d %H:%M:%S')}<extra></extra>"
+                            f"<b>{iv['task']}</b><br>"
+                            f"类型: {iv['type']}<br>"
+                            f"时长: {duration_str}<br>"
+                            f"开始: {iv['start'].strftime('%Y-%m-%d %H:%M:%S')}<br>"
+                            f"结束: {iv['end'].strftime('%Y-%m-%d %H:%M:%S')}<extra></extra>"
                         ),
-                        showlegend=False
+                        showlegend=False,
+                        name=iv['task']
                     ))
                     # markers 不显示 hover 信息
                     fig.add_trace(go.Scatter(
@@ -168,14 +208,16 @@ class TimelinePlotlyWidget(QWidget):
                         y=[0],
                         mode="markers",
                         marker=dict(size=14, color=type_color.get(iv["type"], "#888"), symbol="circle"),
-                        showlegend=False
+                        showlegend=False,
+                        hoverinfo="skip"
                     ))
                     fig.add_trace(go.Scatter(
                         x=[iv["end"]],
                         y=[0],
                         mode="markers",
                         marker=dict(size=14, color=type_color.get(iv["type"], "#888"), symbol="circle-open"),
-                        showlegend=False
+                        showlegend=False,
+                        hoverinfo="skip"
                     ))
             # 横坐标刻度全部转为时间字符串
             tickvals = []

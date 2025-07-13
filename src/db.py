@@ -7,7 +7,7 @@ def get_base_dir():
     if getattr(sys, 'frozen', False):
         return os.path.dirname(sys.executable)
     else:
-        return os.path.dirname(os.path.abspath(__file__))
+        return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 DB_LEARN = os.path.join(get_base_dir(), 'data', 'learn.db')
 DB_REVIEW = os.path.join(get_base_dir(), 'data', 'review.db')

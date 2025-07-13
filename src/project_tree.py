@@ -1,4 +1,4 @@
-import json, os, uuid
+import json, os, uuid, sys
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QGraphicsView, QGraphicsScene, QMenu, QInputDialog, QMessageBox
 from PyQt5.QtCore import Qt
 from tree_base import NodeItem, EdgeLine
@@ -6,7 +6,13 @@ from settings import load_settings
 from PyQt5.QtGui import QPainter
 import db
 
-DATA_FILE = "data/data.json"
+def get_base_dir():
+    if getattr(sys, 'frozen', False):
+        return os.path.dirname(sys.executable)
+    else:
+        return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+DATA_FILE = os.path.join(get_base_dir(), "data", "data.json")
 
 def load_data():
     if os.path.exists(DATA_FILE):

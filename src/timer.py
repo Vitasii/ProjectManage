@@ -5,8 +5,16 @@ import datetime
 import json
 import project_tree
 import db
+import os
+import sys
 
-DATA_FILE = "data/data.json"
+def get_base_dir():
+    if getattr(sys, 'frozen', False):
+        return os.path.dirname(sys.executable)
+    else:
+        return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+DATA_FILE = os.path.join(get_base_dir(), "data", "data.json")
 
 def save_data(data):
     with open(DATA_FILE, "w", encoding="utf-8") as f:
@@ -94,6 +102,10 @@ class TimerWidget(QWidget):
         self.timer_state = state
         self.status_label.setText(state)
 
+    def is_timing(self):
+        """检查是否正在计时（包括暂停状态）"""
+        return self.timer_state in ["Ongoing", "Paused"]
+
     def start(self):
         if not self.start_time:
             self.start_time = time.time()
@@ -139,6 +151,8 @@ class TimerWidget(QWidget):
                 save_data(data)
         if self.main_window:
             self.main_window.refresh_all()
+            # timer结束后自动返回之前的页面
+            self.main_window.return_from_timer()
         self.label.setText("00:00:00")
         self.start_time = None
         self.paused = False

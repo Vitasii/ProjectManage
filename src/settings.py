@@ -1,7 +1,13 @@
-import json, os
+import json, os, sys
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QColorDialog, QPushButton, QSpinBox, QHBoxLayout
 
-SETTINGS_FILE = "data/settings.json"
+def get_base_dir():
+    if getattr(sys, 'frozen', False):
+        return os.path.dirname(sys.executable)
+    else:
+        return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+SETTINGS_FILE = os.path.join(get_base_dir(), "data", "settings.json")
 DEFAULT_COLORS = {
     "default_color": "#A0A0A0",
     "toggle_done_color_project_tree": "#90EE90",
