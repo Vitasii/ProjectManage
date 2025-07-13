@@ -73,38 +73,58 @@ class ProjectTreeWidget(QWidget):
         x_offset = int(self.settings.get("tree_x_offset", 300))
         y_offset = int(self.settings.get("tree_y_offset", 120))
 
-        # 递归计算每棵子树的宽度
-        def calc_width(node):
+
+        # 新的递归布局算法：x_offset为叶子节点最小间距
+        leaf_positions = []
+        def assign_leaf_positions(node, depth=0):
             if not node.get("children"):
-                node["_subtree_width"] = 1
-                return 1
-            width = 0
-            for ch in node["children"]:
-                width += calc_width(ch)
-            node["_subtree_width"] = width
-            return width
+                node["_leaf_index"] = len(leaf_positions)
+                leaf_positions.append(node)
+            else:
+                for ch in node["children"]:
+                    assign_leaf_positions(ch, depth+1)
 
-        # 递归布局，避免重叠
-        def layout_tree(node, depth=0, x=0):
+        def set_positions(node, depth=0):
             y = depth * y_offset
-            width = node.get("_subtree_width", 1)
-            left = x - (width / 2.0) * x_offset + x_offset / 2.0
-            cur_x = left
-            node["pos"] = [x, y]
-            for ch in node.get("children", []):
-                w = ch.get("_subtree_width", 1)
-                child_center = cur_x + (w / 2.0) * x_offset - x_offset / 2.0
-                layout_tree(ch, depth + 1, child_center)
-                cur_x += w * x_offset
+            if not node.get("children"):
+                x = node["_leaf_index"] * x_offset
+                node["pos"] = [x, y]
+                return x
+            else:
+                child_xs = [set_positions(ch, depth+1) for ch in node["children"]]
+                x = sum(child_xs) / len(child_xs)
+                node["pos"] = [x, y]
+                return x
 
-        calc_width(self.data)
-        layout_tree(self.data)
+        assign_leaf_positions(self.data)
+        set_positions(self.data)
 
-        # draw_tree部分保持不变
+        # draw_tree支持颜色优先级
+        def get_node_color(node):
+            settings = self.settings
+            # 优先级：toggle_done_color_project_tree > 节点color > default color
+            if node.get("done") and settings.get("toggle_done_color_project_tree"):
+                return settings["toggle_done_color_project_tree"]
+            if node.get("color"):
+                return node["color"]
+            return settings.get("default_color", "#A0A0A0")
+
         def draw_tree(node, parent_item=None):
-            color = "#ffd54f" if node.get("is_root_task") else ("#90EE90" if node.get("done") else "#A0A0A0")
+            color = get_node_color(node)
             learn_sec = total_learn_time(node)
-            text = f'{node["name"]}\n{format_seconds(learn_sec)}'
+            text = node["name"]
+            # 如果已完成，显示完成时间
+            if node.get("done"):
+                finished_time = node.get("done_time")
+                if finished_time:
+                    import datetime
+                    try:
+                        dt = datetime.datetime.fromtimestamp(finished_time)
+                        finished_str = dt.strftime("Finished at %Y-%m-%d")
+                    except Exception:
+                        finished_str = f"Finished at {finished_time}"
+                    text += f"\n{finished_str}"
+            text += f'\n{format_seconds(learn_sec)}'
             item = NodeItem(node, color, text)
             self.scene.addItem(item)
             self.node_items.append(item)
@@ -145,7 +165,10 @@ class ProjectTreeWidget(QWidget):
             "done": False,
             "lastreview": 0,
             "review_state": False
+            # 不含 done_time 字段
         }
+        if "done_time" in new_node:
+            del new_node["done_time"]
         node["children"].append(new_node)
         save_data(self.data)
         self.main_window.refresh_all()
@@ -163,10 +186,17 @@ class ProjectTreeWidget(QWidget):
         self.main_window.refresh_all()
 
     def toggle_done(self):
+        import time
         node, _ = self.get_selected()
         if node is None:
             return
-        node["done"] = not node.get("done", False)
+        if not node.get("done", False):
+            node["done"] = True
+            node["done_time"] = int(time.time())
+        else:
+            node["done"] = False
+            if "done_time" in node:
+                del node["done_time"]
         save_data(self.data)
         self.main_window.refresh_all()
 
@@ -212,12 +242,40 @@ class ProjectTreeWidget(QWidget):
             return
         self.selected_node = clicked_item.node_data
         menu = QMenu(self)
-        menu.addAction("Add Child Node", self.add_node)
-        menu.addAction("Delete Node", self.del_node)
-        menu.addAction("Rename Node", self.rename_node)
-        menu.addAction("Toggle Done/Undone", self.toggle_done)
+        # Start Learning 作为主菜单第一个选项
         menu.addAction("Start Learning", self.start_study)
-        # 新增左右移动
-        menu.addAction("Move Left", lambda: self.move_node(-1))
-        menu.addAction("Move Right", lambda: self.move_node(1))
-        menu.exec_(self.view.mapToGlobal(pos))
+        # Toggle Done/Undone 作为主菜单
+        menu.addAction("Toggle Done/Undone", self.toggle_done)
+        # Color 子菜单
+        color_menu = menu.addMenu("Color")
+        color_menu.addAction("Change Color", self.change_node_color)
+        color_menu.addAction("Set to Default Color", self.set_node_default_color)
+        # Operation 子菜单
+        op_menu = menu.addMenu("Operation")
+        op_menu.addAction("Add Child Node", self.add_node)
+        op_menu.addAction("Delete Node", self.del_node)
+        op_menu.addAction("Rename Node", self.rename_node)
+        op_menu.addAction("Move Left", lambda: self.move_node(-1))
+        op_menu.addAction("Move Right", lambda: self.move_node(1))
+        global_pos = self.view.mapToGlobal(pos)
+        menu.exec_(global_pos)
+
+    def set_node_default_color(self):
+        node, _ = self.get_selected()
+        if node is None:
+            return
+        if "color" in node:
+            del node["color"]
+            save_data(self.data)
+            self.main_window.refresh_all()
+
+    def change_node_color(self):
+        node, _ = self.get_selected()
+        if node is None:
+            return
+        from PyQt5.QtWidgets import QColorDialog
+        color = QColorDialog.getColor()
+        if color.isValid():
+            node["color"] = color.name()
+            save_data(self.data)
+            self.main_window.refresh_all()

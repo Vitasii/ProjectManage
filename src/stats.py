@@ -67,7 +67,6 @@ class StatsWidget(QWidget):
         self.scene = QGraphicsScene()
         from tree_base import ZoomableGraphicsView
         self.view = ZoomableGraphicsView(self.scene)
-        self.view.setRenderHint(QPainter.Antialiasing)
         layout.addWidget(self.view)
         self.info_label = QLabel()
         self.info_label.setStyleSheet("font-family: '霞鹜文楷'; font-size: 14px;")
@@ -81,41 +80,63 @@ class StatsWidget(QWidget):
 
     def refresh(self):
         self.data = load_data()
+    def refresh(self):
+        self.data = load_data()
         self.scene.clear()
         self.node_items = []
         self.edges = []
         x_offset = int(self.settings.get("tree_x_offset", 300))
         y_offset = int(self.settings.get("tree_y_offset", 120))
 
-        def calc_width(node):
+        # 递归布局算法（与project_tree一致）
+        leaf_positions = []
+        def assign_leaf_positions(node, depth=0):
             if not node.get("children"):
-                node["_subtree_width"] = 1
-                return 1
-            width = 0
-            for ch in node["children"]:
-                width += calc_width(ch)
-            node["_subtree_width"] = width
-            return width
+                node["_leaf_index"] = len(leaf_positions)
+                leaf_positions.append(node)
+            else:
+                for ch in node.get("children", []):
+                    assign_leaf_positions(ch, depth+1)
 
-        def layout_tree(node, depth=0, x=0):
+        def set_positions(node, depth=0):
             y = depth * y_offset
-            width = node.get("_subtree_width", 1)
-            left = x - (width / 2.0) * x_offset + x_offset / 2.0
-            cur_x = left
-            node["pos"] = [x, y]
-            for ch in node.get("children", []):
-                w = ch.get("_subtree_width", 1)
-                child_center = cur_x + (w / 2.0) * x_offset - x_offset / 2.0
-                layout_tree(ch, depth + 1, child_center)
-                cur_x += w * x_offset
+            if not node.get("children"):
+                x = node["_leaf_index"] * x_offset
+                node["pos"] = [x, y]
+                return x
+            else:
+                child_xs = [set_positions(ch, depth+1) for ch in node["children"]]
+                x = sum(child_xs) / len(child_xs)
+                node["pos"] = [x, y]
+                return x
 
-        calc_width(self.data)
-        layout_tree(self.data)
+        assign_leaf_positions(self.data)
+        set_positions(self.data)
+
+        def get_node_color(node):
+            settings = self.settings
+            # 优先级：toggle_done_color_stat > 节点color > default color
+            if node.get("done") and settings.get("toggle_done_color_stat"):
+                return settings["toggle_done_color_stat"]
+            if node.get("color"):
+                return node["color"]
+            return settings.get("default_color", "#A0A0A0")
 
         def draw_tree(node, parent_item=None):
-            color = self.settings["project_finished"] if node.get("done") else self.settings["project_unfinished"]
-            learn, review = node_learn_review_time(node)
-            text = f'{node["name"]}\nLearn:{format_seconds(learn)}\nReview:{format_seconds(review)}'
+            color = get_node_color(node)
+            learn_sec, review_sec = node_learn_review_time(node)
+            text = node["name"]
+            # 如果已完成，显示完成时间
+            if node.get("done"):
+                finished_time = node.get("done_time")
+                if finished_time:
+                    try:
+                        dt = datetime.datetime.fromtimestamp(finished_time)
+                        finished_str = dt.strftime("Finished at %Y-%m-%d")
+                    except Exception:
+                        finished_str = f"Finished at {finished_time}"
+                    text += f"\n{finished_str}"
+            text += f'\n学:{format_seconds(learn_sec)}\n复:{format_seconds(review_sec)}'
             item = NodeItem(node, color, text)
             self.scene.addItem(item)
             self.node_items.append(item)
@@ -189,40 +210,47 @@ class StatsWidget(QWidget):
         year_learn = [learn_month_agg.get(m, 0) for m in year_months]
         year_review = [review_month_agg.get(m, 0) for m in year_months]
 
-        fig, axs = plt.subplots(3, 1, figsize=(10, 12))
-        axs[0].plot(week_dates, week_learn, marker='o', label="Learn", color="#4F81BD")
-        axs[0].plot(week_dates, week_review, marker='s', label="Review", color="#C0504D")
-        axs[0].set_title("Last 7 Days Time Trend")
-        axs[0].set_ylabel("Seconds")
-        axs[0].legend()
-        axs[0].set_xticks(week_dates)
-        axs[0].set_xticklabels(week_dates, rotation=45, ha='right')
-
-        axs[1].plot(month_dates, month_learn, marker='o', label="Learn", color="#4F81BD")
-        axs[1].plot(month_dates, month_review, marker='s', label="Review", color="#C0504D")
-        axs[1].set_title("Last 30 Days Time Trend")
-        axs[1].set_ylabel("Seconds")
-        axs[1].legend()
-        axs[1].set_xticks(month_dates[::max(1, len(month_dates)//10)])
-        axs[1].set_xticklabels(month_dates[::max(1, len(month_dates)//10)], rotation=45, ha='right')
-
-        axs[2].plot(year_months, year_learn, marker='o', label="Learn", color="#4F81BD")
-        axs[2].plot(year_months, year_review, marker='s', label="Review", color="#C0504D")
-        axs[2].set_title("Last 12 Months Time Trend")
-        axs[2].set_ylabel("Seconds")
-        axs[2].legend()
-        axs[2].set_xticks(year_months)
-        axs[2].set_xticklabels(year_months, rotation=45, ha='right')
-
-        plt.tight_layout()
-        plt.show()
-
-        # ==== 新增百分比图 ====
         import numpy as np
+        fig, axs = plt.subplots(2, 4, figsize=(24, 10))
+        # 1. 折线图1：最近7天
+        ax = axs[0, 0]
+        ax.plot(week_dates, week_learn, marker='o', label="Learn", color="#4F81BD")
+        ax.plot(week_dates, week_review, marker='s', label="Review", color="#C0504D")
+        ax.set_title("Last 7 Days Time Trend")
+        ax.set_ylabel("Seconds")
+        ax.legend()
+        ax.set_xticks(week_dates)
+        ax.set_xticklabels(week_dates, rotation=45, ha='right')
 
+        # 2. 折线图2：最近30天
+        ax = axs[0, 1]
+        ax.plot(month_dates, month_learn, marker='o', label="Learn", color="#4F81BD")
+        ax.plot(month_dates, month_review, marker='s', label="Review", color="#C0504D")
+        ax.set_title("Last 30 Days Time Trend")
+        ax.set_ylabel("Seconds")
+        ax.legend()
+        ax.set_xticks(month_dates[::max(1, len(month_dates)//10)])
+        ax.set_xticklabels(month_dates[::max(1, len(month_dates)//10)], rotation=45, ha='right')
+
+        # 3. 折线图3：最近12个月
+        ax = axs[0, 2]
+        ax.plot(year_months, year_learn, marker='o', label="Learn", color="#4F81BD")
+        ax.plot(year_months, year_review, marker='s', label="Review", color="#C0504D")
+        ax.set_title("Last 12 Months Time Trend")
+        ax.set_ylabel("Seconds")
+        ax.legend()
+        ax.set_xticks(year_months)
+        ax.set_xticklabels(year_months, rotation=45, ha='right')
+
+        # 4. 空白子图
+        axs[0, 3].axis('off')
+
+        # 饼图绘制函数
         def plot_percent_pie(ax, node, days, title):
             # 只统计直接子节点
             if not node.get("children"):
+                ax.set_title(title + " (No Data)")
+                ax.axis('off')
                 return
             end_date = datetime.date.today()
             start_date = end_date - datetime.timedelta(days=days-1)
@@ -242,16 +270,21 @@ class StatsWidget(QWidget):
             total_time = sum(child_times)
             if total_time == 0:
                 ax.set_title(title + " (No Data)")
+                ax.axis('off')
                 return
             percent = np.array(child_times) / total_time
             ax.pie(percent, labels=child_names, autopct='%1.1f%%', startangle=90)
             ax.set_title(title)
 
-        fig2, axs2 = plt.subplots(2, 2, figsize=(12, 10))
-        plot_percent_pie(axs2[0,0], node, 1, "Today")
-        plot_percent_pie(axs2[0,1], node, 7, "Last 7 Days")
-        plot_percent_pie(axs2[1,0], node, 30, "Last 30 Days")
-        plot_percent_pie(axs2[1,1], node, 365, "Last 1 Year")
+        # 5. 饼图1：Today
+        plot_percent_pie(axs[1, 0], node, 1, "Today")
+        # 6. 饼图2：Last 7 Days
+        plot_percent_pie(axs[1, 1], node, 7, "Last 7 Days")
+        # 7. 饼图3：Last 30 Days
+        plot_percent_pie(axs[1, 2], node, 30, "Last 30 Days")
+        # 8. 饼图4：Last 1 Year
+        plot_percent_pie(axs[1, 3], node, 365, "Last 1 Year")
+
         plt.tight_layout()
         plt.show()
 
@@ -266,5 +299,33 @@ class StatsWidget(QWidget):
             return
         self.selected_node = clicked_item.node_data
         menu = QMenu(self)
+        # Show Chart 作为主菜单第一个选项
         menu.addAction("Show Chart", self.show_chart)
-        menu.exec_(self.view.mapToGlobal(pos))
+        # Color 子菜单
+        color_menu = menu.addMenu("Color")
+        color_menu.addAction("Change Color", self.change_node_color)
+        color_menu.addAction("Set to Default Color", self.set_node_default_color)
+        global_pos = self.view.mapToGlobal(pos)
+        menu.exec_(global_pos)
+
+    def set_node_default_color(self):
+        node = self.selected_node
+        if node is None:
+            return
+        if "color" in node:
+            del node["color"]
+            from project_tree import save_data
+            save_data(self.data)
+            self.refresh()
+
+    def change_node_color(self):
+        node = self.selected_node
+        if node is None:
+            return
+        from PyQt5.QtWidgets import QColorDialog
+        color = QColorDialog.getColor()
+        if color.isValid():
+            node["color"] = color.name()
+            from project_tree import save_data
+            save_data(self.data)
+            self.refresh()

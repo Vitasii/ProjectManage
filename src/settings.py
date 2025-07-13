@@ -3,10 +3,10 @@ from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QColorDialog, QPushBut
 
 SETTINGS_FILE = "data/settings.json"
 DEFAULT_COLORS = {
-    "project_unfinished": "#A0A0A0",
-    "project_finished": "#90EE90",
-    "review_active": "#ffd54f",
-    "review_inactive": "#A0A0A0",
+    "default_color": "#A0A0A0",
+    "toggle_done_color_project_tree": "#90EE90",
+    "start_review_color": "#ffd54f",
+    "toggle_done_color_stat": "#90caf9",
     "tree_x_offset": 300,
     "tree_y_offset": 120
 }
@@ -27,14 +27,15 @@ class SettingsWidget(QWidget):
         self.colors = load_settings()
         layout = QVBoxLayout(self)
         self.labels = {}
-        # 颜色设置
-        for key, label in [
-            ("project_unfinished", "Project_unfinished Color"),
-            ("project_finished", "Project_finished Color"),
-            ("review_active", "Review_active Color"),
-            ("review_inactive", "Review_inactive Color")
-        ]:
-            l = QLabel(f"{label}: {self.colors[key]}")
+        # 新颜色设置
+        color_settings = [
+            ("default_color", "Default Node Color (所有图默认)"),
+            ("toggle_done_color_project_tree", "Toggle Done Color in Project Tree (仅Project Tree)"),
+            ("start_review_color", "Start Review Color (仅Review)") ,
+            ("toggle_done_color_stat", "Toggle Done Color in Stat (仅Stat)")
+        ]
+        for key, label in color_settings:
+            l = QLabel(f"{label}: {self.colors.get(key, '')}")
             l.setStyleSheet("font-family: '霞鹜文楷'; font-size: 20px;")
             btn = QPushButton("Modify")
             btn.setStyleSheet("font-family: '霞鹜文楷'; font-size: 20px;")

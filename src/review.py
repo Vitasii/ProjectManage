@@ -82,33 +82,42 @@ class ReviewWidget(QWidget):
         x_offset = int(self.settings.get("tree_x_offset", 300))
         y_offset = int(self.settings.get("tree_y_offset", 120))
 
-        def calc_width(node):
+        # 递归布局算法（与project_tree一致）
+        leaf_positions = []
+        def assign_leaf_positions(node, depth=0):
             if not node.get("children"):
-                node["_subtree_width"] = 1
-                return 1
-            width = 0
-            for ch in node["children"]:
-                width += calc_width(ch)
-            node["_subtree_width"] = width
-            return width
+                node["_leaf_index"] = len(leaf_positions)
+                leaf_positions.append(node)
+            else:
+                for ch in node.get("children", []):
+                    assign_leaf_positions(ch, depth+1)
 
-        def layout_tree(node, depth=0, x=0):
+        def set_positions(node, depth=0):
             y = depth * y_offset
-            width = node.get("_subtree_width", 1)
-            left = x - (width / 2.0) * x_offset + x_offset / 2.0
-            cur_x = left
-            node["pos"] = [x, y]
-            for ch in node.get("children", []):
-                w = ch.get("_subtree_width", 1)
-                child_center = cur_x + (w / 2.0) * x_offset - x_offset / 2.0
-                layout_tree(ch, depth + 1, child_center)
-                cur_x += w * x_offset
+            if not node.get("children"):
+                x = node["_leaf_index"] * x_offset
+                node["pos"] = [x, y]
+                return x
+            else:
+                child_xs = [set_positions(ch, depth+1) for ch in node["children"]]
+                x = sum(child_xs) / len(child_xs)
+                node["pos"] = [x, y]
+                return x
 
-        calc_width(self.data)
-        layout_tree(self.data)
+        assign_leaf_positions(self.data)
+        set_positions(self.data)
+
+        def get_node_color(node):
+            settings = self.settings
+            # 优先级：start_review_color > 节点color > default color
+            if node.get("review_state") and settings.get("start_review_color"):
+                return settings["start_review_color"]
+            if node.get("color"):
+                return node["color"]
+            return settings.get("default_color", "#A0A0A0")
 
         def draw_tree(node, parent_item=None):
-            color = "#4fc3f7" if node.get("review_state") else "#A0A0A0"
+            color = get_node_color(node)
             review_sec = total_review_time(node)
             if node.get("review_state"):
                 period = node.get("period", None)
@@ -126,7 +135,18 @@ class ReviewWidget(QWidget):
             for ch in node.get("children", []):
                 draw_tree(ch, item)
         draw_tree(self.data)
-        self.show_suggest()
+
+    def change_node_color(self):
+        node = self.selected_node
+        if node is None:
+            return
+        from PyQt5.QtWidgets import QColorDialog
+        color = QColorDialog.getColor()
+        if color.isValid():
+            node["color"] = color.name()
+            from project_tree import save_data
+            save_data(self.data)
+            self.refresh()
 
     def get_selected(self):
         if self.selected_node:
@@ -182,12 +202,24 @@ class ReviewWidget(QWidget):
             return
         self.selected_node = clicked_item.node_data
         menu = QMenu(self)
-        if not self.selected_node.get("review_state"):
-            menu.addAction("Set Review", self.set_review)
-        else:
-            menu.addAction("Unset Review", self.unset_review)
+        # Start Review 作为主菜单第一个选项
         menu.addAction("Start Review", self.start_review)
-        menu.exec_(self.view.mapToGlobal(pos))
+        # Color 子菜单
+        color_menu = menu.addMenu("Color")
+        color_menu.addAction("Change Color", self.change_node_color)
+        color_menu.addAction("Set to Default Color", self.set_node_default_color)
+        global_pos = self.view.mapToGlobal(pos)
+        menu.exec_(global_pos)
+
+    def set_node_default_color(self):
+        node = self.selected_node
+        if node is None:
+            return
+        if "color" in node:
+            del node["color"]
+            from project_tree import save_data
+            save_data(self.data)
+            self.refresh()
 
     def show_suggest(self):
         now = int(time.time())
