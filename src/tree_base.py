@@ -7,7 +7,7 @@ class NodeItem(QGraphicsRectItem):
 
     def __init__(self, node_data, color, text, parent=None):
         x, y = node_data.get("pos", [0, 0])
-        font = QFont()
+        font = QFont("霞鹜文楷")
         font.setPointSize(10)
         font.setBold(True)
         temp_text = QGraphicsTextItem(text)

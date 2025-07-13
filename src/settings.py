@@ -35,7 +35,9 @@ class SettingsWidget(QWidget):
             ("review_inactive", "Review_inactive Color")
         ]:
             l = QLabel(f"{label}: {self.colors[key]}")
+            l.setStyleSheet("font-family: '霞鹜文楷'; font-size: 20px;")
             btn = QPushButton("Modify")
+            btn.setStyleSheet("font-family: '霞鹜文楷'; font-size: 20px;")
             btn.clicked.connect(lambda _, k=key, lab=l: self.change_color(k, lab))
             layout.addWidget(l)
             layout.addWidget(btn)
@@ -44,7 +46,9 @@ class SettingsWidget(QWidget):
         # tree_x_offset 设置
         x_layout = QHBoxLayout()
         x_label = QLabel("Tree X Offset:")
+        x_label.setStyleSheet("font-family: '霞鹜文楷'; font-size: 20px;")
         self.x_spin = QSpinBox()
+        self.x_spin.setStyleSheet("font-family: '霞鹜文楷'; font-size: 20px;")
         self.x_spin.setRange(50, 1000)
         self.x_spin.setValue(int(self.colors.get("tree_x_offset", 300)))
         self.x_spin.valueChanged.connect(self.save_offsets)
@@ -55,7 +59,9 @@ class SettingsWidget(QWidget):
         # tree_y_offset 设置
         y_layout = QHBoxLayout()
         y_label = QLabel("Tree Y Offset:")
+        y_label.setStyleSheet("font-family: '霞鹜文楷'; font-size: 20px;")
         self.y_spin = QSpinBox()
+        self.y_spin.setStyleSheet("font-family: '霞鹜文楷'; font-size: 20px;")
         self.y_spin.setRange(50, 1000)
         self.y_spin.setValue(int(self.colors.get("tree_y_offset", 120)))
         self.y_spin.valueChanged.connect(self.save_offsets)

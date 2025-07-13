@@ -36,7 +36,7 @@ class TimerWidget(QWidget):
 
         self.label = QLabel("00:00:00")
         self.label.setAlignment(Qt.AlignCenter)
-        self.label.setStyleSheet("font-size: 48px; font-weight: bold;")
+        self.label.setStyleSheet("font-family: '霞鹜文楷'; font-size: 48px; font-weight: bold;")
         inner_layout.addWidget(self.label)
 
         btn_layout = QHBoxLayout()
@@ -45,17 +45,17 @@ class TimerWidget(QWidget):
 
         self.btn_start = QPushButton("Start")
         self.btn_start.setFixedSize(100, 50)
-        self.btn_start.setStyleSheet("font-size: 20px;")
+        self.btn_start.setStyleSheet("font-family: '霞鹜文楷'; font-size: 20px;")
         btn_layout.addWidget(self.btn_start)
 
         self.btn_pause = QPushButton("Pause")
         self.btn_pause.setFixedSize(100, 50)
-        self.btn_pause.setStyleSheet("font-size: 20px;")
+        self.btn_pause.setStyleSheet("font-family: '霞鹜文楷'; font-size: 20px;")
         btn_layout.addWidget(self.btn_pause)
 
         self.btn_end = QPushButton("End")
         self.btn_end.setFixedSize(100, 50)
-        self.btn_end.setStyleSheet("font-size: 20px;")
+        self.btn_end.setStyleSheet("font-family: '霞鹜文楷'; font-size: 20px;")
         btn_layout.addWidget(self.btn_end)
 
         inner_layout.addLayout(btn_layout)
@@ -77,6 +77,7 @@ class TimerWidget(QWidget):
         # 状态标签
         self.status_label = QLabel("Stopped")
         self.status_label.setAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
+        self.status_label.setStyleSheet("font-family: '霞鹜文楷'; font-size: 16px;")
         outer_layout.addWidget(self.status_label)
 
         self.timer_state = "Stopped"  # 可选: "Stopped", "Ongoing", "Paused"

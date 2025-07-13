@@ -64,6 +64,7 @@ class ReviewWidget(QWidget):
         self.view.setRenderHint(QPainter.Antialiasing)
         layout.addWidget(self.view)
         self.suggest_label = QLabel()
+        self.suggest_label.setStyleSheet("font-family: '霞鹜文楷'; font-size: 14px;")
         layout.addWidget(self.suggest_label)
         self.node_items = []
         self.selected_node = None

@@ -50,7 +50,33 @@ class MainWindow(QMainWindow):
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     from PyQt5.QtGui import QFont
-    app.setFont(QFont("霞鹜文楷", 12))  # 这里设置全局字体和字号
+    
+    # 设置全局字体为霞鹜文楷
+    font = QFont("霞鹜文楷", 12)
+    font.setHintingPreference(QFont.PreferDefaultHinting)
+    app.setFont(font)
+    
+    # 设置全局样式表，确保所有组件都使用霞鹜文楷字体
+    app.setStyleSheet("""
+        * {
+            font-family: '霞鹜文楷';
+        }
+        QMenuBar {
+            font-family: '霞鹜文楷';
+            font-size: 12px;
+        }
+        QMenu {
+            font-family: '霞鹜文楷';
+            font-size: 12px;
+        }
+        QMessageBox {
+            font-family: '霞鹜文楷';
+        }
+        QInputDialog {
+            font-family: '霞鹜文楷';
+        }
+    """)
+    
     win = MainWindow()
     win.show()
     sys.exit(app.exec_())

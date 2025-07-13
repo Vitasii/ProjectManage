@@ -70,6 +70,7 @@ class StatsWidget(QWidget):
         self.view.setRenderHint(QPainter.Antialiasing)
         layout.addWidget(self.view)
         self.info_label = QLabel()
+        self.info_label.setStyleSheet("font-family: '霞鹜文楷'; font-size: 14px;")
         layout.addWidget(self.info_label)
         self.node_items = []
         self.selected_node = None
