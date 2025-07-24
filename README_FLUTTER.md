@@ -24,13 +24,14 @@ ProjectManage/
 
 ## ✅ 已删除的文件
 
-以下PyQt5相关文件已安全删除：
-- `src/` 目录（所有PyQt5源代码）
-- `run.py`（PyQt5应用入口）
-- `*.spec`（PyInstaller配置文件）
-- `build/` 和 `dist/`（PyInstaller构建目录）
+以下 PyQt5 相关文件已安全删除：
+
+- `src/` 目录（所有 PyQt5 源代码）
+- `run.py`（PyQt5 应用入口）
+- `*.spec`（PyInstaller 配置文件）
+- `build/` 和 `dist/`（PyInstaller 构建目录）
 - `timeline_html/`（现由后端动态生成）
-- 其他PyInstaller相关文件
+- 其他 PyInstaller 相关文件
 
 ## 技术栈
 

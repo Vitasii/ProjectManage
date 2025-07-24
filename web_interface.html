@@ -3,134 +3,426 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Project Manager - Web界面</title>
+    <title>VisProject - 项目管理器</title>
     <style>
         body {
-            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            font-family: '霞鹜文楷', 'Microsoft YaHei', Arial, sans-serif;
             margin: 0;
-            padding: 20px;
-            background-color: #f5f5f5;
+            padding: 0;
+            background-color: #f0f0f0;
+            overflow: hidden;
         }
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
+        
+        /* 菜单栏样式 */
+        .menubar {
+            background: #2c3e50;
+            color: white;
+            padding: 10px 0;
+            font-size: 14px;
+        }
+        .menu-item {
+            display: inline-block;
+            padding: 8px 20px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .menu-item:hover {
+            background: #34495e;
+        }
+        .menu-item.active {
+            background: #3498db;
+        }
+        
+        /* 主容器 */
+        .main-container {
+            height: calc(100vh - 50px);
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* 页面容器 */
+        .page {
+            display: none;
+            height: 100%;
+            padding: 20px;
             background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
-        .header {
-            text-align: center;
-            margin-bottom: 30px;
-            color: #333;
+        .page.active {
+            display: block;
         }
-        .section {
-            margin: 20px 0;
-            padding: 15px;
+        
+        /* 项目树样式 */
+        .project-page {
+            display: flex;
+            gap: 20px;
+        }
+        .tree-container {
+            flex: 2;
             border: 1px solid #ddd;
             border-radius: 5px;
+            padding: 15px;
+            background: #fafafa;
+            overflow: auto;
         }
-        .section h3 {
-            margin-top: 0;
-            color: #2196F3;
+        .tree-controls {
+            margin-bottom: 15px;
         }
-        button {
-            background: #2196F3;
-            color: white;
-            border: none;
-            padding: 10px 15px;
-            border-radius: 4px;
-            cursor: pointer;
-            margin: 5px;
-        }
-        button:hover {
-            background: #1976D2;
-        }
-        .project-tree {
-            max-height: 400px;
-            overflow-y: auto;
-            border: 1px solid #eee;
-            padding: 10px;
-        }
-        .node {
-            margin: 5px 0;
-            padding: 8px;
-            background: #f9f9f9;
-            border-radius: 3px;
-        }
-        .node.done {
-            text-decoration: line-through;
-            opacity: 0.7;
-        }
-        input {
-            padding: 8px;
+        
+        /* 统计面板 */
+        .stats-panel {
+            flex: 1;
             border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 15px;
+            background: white;
+        }
+        
+        /* 节点样式 */
+        .tree-node {
+            margin: 8px 0;
+            padding: 12px;
+            border: 2px solid #A0A0A0;
+            border-radius: 8px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+        }
+        .tree-node:hover {
+            border-color: #3498db;
+            box-shadow: 0 2px 8px rgba(52, 152, 219, 0.3);
+        }
+        .tree-node.done {
+            background: #e8f5e8;
+            border-color: #27ae60;
+            opacity: 0.8;
+        }
+        .tree-node.selected {
+            border-color: #e74c3c;
+            background: #fff5f5;
+        }
+        
+        /* 节点内容 */
+        .node-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+        .node-name {
+            font-weight: bold;
+            font-size: 16px;
+        }
+        .node-time {
+            font-size: 12px;
+            color: #666;
+        }
+        .node-actions {
+            display: none;
+        }
+        .tree-node:hover .node-actions {
+            display: block;
+        }
+        .node-actions button {
+            padding: 4px 8px;
+            margin: 0 2px;
+            font-size: 12px;
+            border: none;
             border-radius: 3px;
-            margin: 5px;
+            cursor: pointer;
+        }
+        .btn-learn {
+            background: #3498db;
+            color: white;
+        }
+        .btn-review {
+            background: #f39c12;
+            color: white;
+        }
+        
+        /* 层级缩进 */
+        .tree-node[data-level="1"] { margin-left: 20px; }
+        .tree-node[data-level="2"] { margin-left: 40px; }
+        .tree-node[data-level="3"] { margin-left: 60px; }
+        .tree-node[data-level="4"] { margin-left: 80px; }
+        
+        /* 计时器页面样式 */
+        .timer-page {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            text-align: center;
         }
         .timer-display {
-            font-size: 48px;
+            font-family: 'Courier New', monospace;
+            font-size: 72px;
             font-weight: bold;
-            text-align: center;
-            margin: 20px 0;
-            font-family: monospace;
+            color: #2c3e50;
+            margin: 30px 0;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
         }
-        .status {
-            padding: 10px;
-            margin: 10px 0;
+        .timer-task {
+            font-size: 20px;
+            color: #34495e;
+            margin-bottom: 20px;
+        }
+        .timer-controls {
+            display: flex;
+            gap: 20px;
+            margin-top: 30px;
+        }
+        .timer-btn {
+            padding: 15px 30px;
+            font-size: 18px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: '霞鹜文楷', sans-serif;
+            transition: all 0.3s;
+        }
+        .btn-start {
+            background: #27ae60;
+            color: white;
+        }
+        .btn-pause {
+            background: #f39c12;
+            color: white;
+        }
+        .btn-end {
+            background: #e74c3c;
+            color: white;
+        }
+        .timer-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        .timer-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        /* 通用按钮样式 */
+        button {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 8px 15px;
             border-radius: 4px;
+            cursor: pointer;
+            font-family: '霞鹜文楷', sans-serif;
+            transition: background 0.3s;
+        }
+        button:hover {
+            background: #2980b9;
+        }
+        
+        /* 输入框样式 */
+        input[type="text"] {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-family: '霞鹜文楷', sans-serif;
+            font-size: 14px;
+        }
+        
+        /* 状态提示 */
+        .status {
+            position: fixed;
+            top: 60px;
+            right: 20px;
+            padding: 12px 20px;
+            border-radius: 6px;
+            z-index: 1000;
+            max-width: 300px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
         }
         .status.success {
-            background: #d4edda;
-            border: 1px solid #c3e6cb;
-            color: #155724;
+            background: #d5e8d4;
+            border: 1px solid #82dd55;
+            color: #2d5a27;
         }
         .status.error {
-            background: #f8d7da;
-            border: 1px solid #f5c6cb;
+            background: #f8cecc;
+            border: 1px solid #f58181;
             color: #721c24;
+        }
+        
+        /* 时间线样式 */
+        .timeline-container {
+            height: 100%;
+            width: 100%;
+        }
+        
+        /* 隐藏计时器菜单项 */
+        .menu-item.timer-menu {
+            display: none;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>Project Manager</h1>
-            <p>Web界面 - 后端API测试</p>
-        </div>
+    <!-- 菜单栏 -->
+    <div class="menubar">
+        <span class="menu-item active" onclick="showPage('projects')">Projects</span>
+        <span class="menu-item" onclick="showPage('review')">Review</span>
+        <span class="menu-item" onclick="showPage('stats')">Stats</span>
+        <span class="menu-item" onclick="showPage('timeline')">Timeline</span>
+        <span class="menu-item" onclick="showPage('settings')">Settings</span>
+        <span class="menu-item timer-menu" onclick="showPage('timer')">Timer</span>
+    </div>
 
+    <div class="main-container">
         <div id="status"></div>
 
-        <!-- 项目管理区域 -->
-        <div class="section">
-            <h3>项目管理</h3>
-            <button onclick="loadProjects()">加载项目</button>
-            <input type="text" id="newNodeName" placeholder="新节点名称">
-            <button onclick="createNode()">添加节点</button>
-            
-            <div class="project-tree" id="projectTree">
-                <p>点击"加载项目"查看项目树</p>
+        <!-- 项目页面 -->
+        <div id="projects" class="page active">
+            <div class="project-page">
+                <div class="tree-container">
+                    <div class="tree-controls">
+                        <input type="text" id="newNodeName" placeholder="新节点名称" style="width: 200px;">
+                        <button onclick="createNode()">添加节点</button>
+                        <button onclick="loadProjects()">刷新</button>
+                    </div>
+                    <div id="projectTree">
+                        <p style="text-align: center; color: #666;">点击"刷新"加载项目树</p>
+                    </div>
+                </div>
+                <div class="stats-panel">
+                    <h3>项目统计</h3>
+                    <div id="projectStats">
+                        <p>选择一个项目查看统计信息</p>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <!-- 计时器区域 -->
-        <div class="section">
-            <h3>计时器</h3>
-            <div id="currentTask">请先选择一个任务</div>
-            <div class="timer-display" id="timerDisplay">00:00:00</div>
-            <div>
-                <button onclick="startTimer()">开始</button>
-                <button onclick="pauseTimer()">暂停</button>
-                <button onclick="stopTimer()">结束</button>
+        <!-- 计时器页面 -->
+        <div id="timer" class="page">
+            <div class="timer-page">
+                <div class="timer-task" id="currentTask">请先从项目页面选择一个任务</div>
+                <div class="timer-display" id="timerDisplay">00:00:00</div>
+                <div id="timerStatus" style="font-size: 18px; color: #7f8c8d; margin: 10px 0;">已停止</div>
+                <div class="timer-controls">
+                    <button class="timer-btn btn-start" onclick="startTimer()">开始</button>
+                    <button class="timer-btn btn-pause" onclick="pauseTimer()">暂停</button>
+                    <button class="timer-btn btn-end" onclick="stopTimer()">结束</button>
+                </div>
+                <div style="margin-top: 40px;">
+                    <button onclick="returnFromTimer()" style="background: #95a5a6;">返回项目</button>
+                </div>
             </div>
         </div>
 
-        <!-- API测试区域 -->
-        <div class="section">
-            <h3>API测试</h3>
-            <button onclick="testAPI()">测试API连接</button>
-            <button onclick="getSettings()">获取设置</button>
-            <button onclick="getTimelineData()">获取时间线数据</button>
+        <!-- 复习页面 -->
+        <div id="review" class="page">
+            <h2>复习管理</h2>
+            <div class="review-controls" style="margin-bottom: 20px;">
+                <button onclick="loadReviewData()">刷新复习列表</button>
+                <button onclick="planReview()">制定复习计划</button>
+            </div>
+            <div class="review-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <div class="review-list" style="border: 1px solid #ddd; border-radius: 8px; padding: 20px; background: white;">
+                    <h3>需要复习的项目</h3>
+                    <div id="reviewList">
+                        <p>加载中...</p>
+                    </div>
+                </div>
+                <div class="review-schedule" style="border: 1px solid #ddd; border-radius: 8px; padding: 20px; background: white;">
+                    <h3>复习计划</h3>
+                    <div id="reviewSchedule">
+                        <p>暂无复习计划</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 统计页面 -->
+        <div id="stats" class="page">
+            <h2>学习统计</h2>
+            <div class="stats-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                <div class="stats-card" style="padding: 20px; border: 1px solid #ddd; border-radius: 8px; background: white;">
+                    <h3>今日统计</h3>
+                    <div id="todayStats">
+                        <p>加载中...</p>
+                    </div>
+                </div>
+                <div class="stats-card" style="padding: 20px; border: 1px solid #ddd; border-radius: 8px; background: white;">
+                    <h3>总体统计</h3>
+                    <div id="totalStats">
+                        <p>加载中...</p>
+                    </div>
+                </div>
+            </div>
+            <div class="stats-controls" style="margin: 20px 0;">
+                <button onclick="loadStatsData()">刷新统计</button>
+                <button onclick="exportStats()">导出数据</button>
+            </div>
+            <div class="recent-sessions" style="border: 1px solid #ddd; border-radius: 8px; padding: 20px; background: white;">
+                <h3>最近学习记录</h3>
+                <div id="recentSessions">
+                    <p>加载中...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 时间线页面 -->
+        <div id="timeline" class="page">
+            <h2>学习时间线</h2>
+            <div class="timeline-controls" style="margin-bottom: 20px;">
+                <button onclick="loadTimelineData()">刷新时间线</button>
+                <select id="timelineFilter" onchange="filterTimeline()">
+                    <option value="all">全部记录</option>
+                    <option value="learn">仅学习</option>
+                    <option value="review">仅复习</option>
+                </select>
+                <input type="date" id="dateFilter" onchange="filterTimeline()" />
+            </div>
+            <div class="timeline-container">
+                <div id="timelineChart" style="min-height: 400px; border: 1px solid #ddd; border-radius: 8px; padding: 20px; background: white;">
+                    <div id="timelineContent">
+                        <p style="text-align: center; color: #666;">点击"刷新时间线"加载数据</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 设置页面 -->
+        <div id="settings" class="page">
+            <h2>系统设置</h2>
+            <div class="settings-container" style="max-width: 600px;">
+                <div class="settings-section" style="margin-bottom: 30px; padding: 20px; border: 1px solid #ddd; border-radius: 8px; background: white;">
+                    <h3>时间线设置</h3>
+                    <div style="margin: 10px 0;">
+                        <label>时间线段数:</label>
+                        <input type="number" id="timelineSegments" min="1" max="50" style="margin-left: 10px; width: 80px;">
+                    </div>
+                    <div style="margin: 10px 0;">
+                        <label>默认颜色:</label>
+                        <input type="color" id="defaultColor" style="margin-left: 10px;">
+                    </div>
+                </div>
+                
+                <div class="settings-section" style="margin-bottom: 30px; padding: 20px; border: 1px solid #ddd; border-radius: 8px; background: white;">
+                    <h3>项目树设置</h3>
+                    <div style="margin: 10px 0;">
+                        <label>X轴偏移:</label>
+                        <input type="number" id="treeXOffset" min="100" max="1000" style="margin-left: 10px; width: 100px;">
+                    </div>
+                    <div style="margin: 10px 0;">
+                        <label>Y轴偏移:</label>
+                        <input type="number" id="treeYOffset" min="50" max="500" style="margin-left: 10px; width: 100px;">
+                    </div>
+                </div>
+                
+                <div class="settings-actions">
+                    <button onclick="loadSettingsData()">加载设置</button>
+                    <button onclick="saveSettings()" style="background: #27ae60;">保存设置</button>
+                    <button onclick="resetSettings()" style="background: #e74c3c;">重置默认</button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -142,6 +434,135 @@
         let startTime = null;
         let timerInterval = null;
         let elapsedTime = 0;
+        let previousPage = 'projects';
+        let isTimerRunning = false;
+
+        // 页面导航
+        function showPage(pageId) {
+            // 如果计时器正在运行，阻止离开Timer页面
+            if (isTimerRunning && pageId !== 'timer') {
+                showStatus('计时器正在运行中，请先结束计时', 'error');
+                return;
+            }
+            
+            // 隐藏所有页面
+            document.querySelectorAll('.page').forEach(page => {
+                page.classList.remove('active');
+            });
+            // 移除菜单项的active状态
+            document.querySelectorAll('.menu-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            
+            // 显示选中的页面
+            document.getElementById(pageId).classList.add('active');
+            // 激活对应的菜单项
+            event.target.classList.add('active');
+            
+            // 记录当前页面（除了timer）
+            if (pageId !== 'timer') {
+                previousPage = pageId;
+            }
+            
+            // 根据页面自动加载数据
+            loadPageData(pageId);
+        }
+
+        function loadPageData(pageId) {
+            switch (pageId) {
+                case 'projects':
+                    // Projects页面在window.onload时已经加载了
+                    break;
+                case 'stats':
+                    loadStatsData();
+                    break;
+                case 'timeline':
+                    if (timelineData.length === 0) {
+                        loadTimelineData();
+                    }
+                    break;
+                case 'review':
+                    loadReviewData();
+                    break;
+                case 'settings':
+                    loadSettingsData();
+                    break;
+            }
+        }
+
+        // 显示计时器（从项目页面跳转）
+        function showTimer(node, mode) {
+            currentNode = node;
+            timerMode = mode;
+            
+            // 更新计时器页面信息
+            document.getElementById('currentTask').textContent = 
+                `当前任务: ${node.name} (${mode === 'learn' ? '学习' : '复习'})`;
+            
+            // 重置计时器状态
+            resetTimer();
+            
+            // 跳转到计时器页面
+            showPage('timer');
+            
+            // 显示Timer菜单项（模拟原版隐藏逻辑）
+            document.querySelector('.timer-menu').style.display = 'inline-block';
+            
+            showStatus(`已选择任务: ${node.name} (${mode === 'learn' ? '学习' : '复习'})`);
+        }
+
+        // 从计时器返回
+        function returnFromTimer() {
+            if (isTimerRunning) {
+                showStatus('计时器正在运行中，请先结束计时', 'error');
+                return;
+            }
+            
+            // 隐藏Timer菜单项
+            document.querySelector('.timer-menu').style.display = 'none';
+            
+            // 返回之前的页面
+            showPage(previousPage);
+        }
+
+        // 重置计时器
+        function resetTimer() {
+            if (timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+            }
+            timerState = 'stopped';
+            startTime = null;
+            elapsedTime = 0;
+            isTimerRunning = false;
+            document.getElementById('timerDisplay').textContent = '00:00:00';
+            document.getElementById('timerStatus').textContent = '已停止';
+            updateTimerButtons();
+        }
+
+        // 更新计时器按钮状态
+        function updateTimerButtons() {
+            const startBtn = document.querySelector('.btn-start');
+            const pauseBtn = document.querySelector('.btn-pause');
+            const endBtn = document.querySelector('.btn-end');
+            
+            if (timerState === 'stopped') {
+                startBtn.disabled = false;
+                startBtn.textContent = '开始';
+                pauseBtn.disabled = true;
+                endBtn.disabled = true;
+            } else if (timerState === 'running') {
+                startBtn.disabled = true;
+                pauseBtn.disabled = false;
+                pauseBtn.textContent = '暂停';
+                endBtn.disabled = false;
+            } else if (timerState === 'paused') {
+                startBtn.disabled = false;
+                startBtn.textContent = '继续';
+                pauseBtn.disabled = true;
+                endBtn.disabled = false;
+            }
+        }
 
         function showStatus(message, type = 'success') {
             const statusDiv = document.getElementById('status');
@@ -170,15 +591,6 @@
             }
         }
 
-        async function testAPI() {
-            try {
-                const result = await apiCall('/');
-                showStatus(`API连接成功: ${result.message}`);
-            } catch (error) {
-                showStatus('API连接失败，请确保后端服务器正在运行', 'error');
-            }
-        }
-
         async function loadProjects() {
             try {
                 const projects = await apiCall('/api/projects');
@@ -196,26 +608,138 @@
             }
 
             const nodeDiv = document.createElement('div');
-            nodeDiv.className = `node ${node.done ? 'done' : ''}`;
-            nodeDiv.style.marginLeft = `${level * 20}px`;
+            nodeDiv.className = `tree-node ${node.done ? 'done' : ''}`;
+            nodeDiv.setAttribute('data-level', level);
+            nodeDiv.onclick = () => selectNode(nodeDiv, node);
+            
+            // 计算实际的学习时间
+            const learnTime = node.learn_time || 0;
+            const reviewTime = node.review_time || 0;
             
             nodeDiv.innerHTML = `
-                <input type="checkbox" ${node.done ? 'checked' : ''} 
-                       onchange="toggleNodeStatus('${node.id}', this.checked)">
-                <span>${node.name}</span>
-                <button onclick="selectForTimer('${node.id}', '${node.name}', 'learn')">学习</button>
-                <button onclick="selectForTimer('${node.id}', '${node.name}', 'review')">复习</button>
+                <div class="node-header">
+                    <div class="node-name">${node.name}</div>
+                    <div class="node-actions">
+                        <button class="btn-learn" onclick="selectForTimer(event, '${node.id}', '${node.name}', 'learn')">学习</button>
+                        <button class="btn-review" onclick="selectForTimer(event, '${node.id}', '${node.name}', 'review')">复习</button>
+                        <button style="background: #e74c3c; color: white; padding: 2px 6px;" onclick="deleteNode(event, '${node.id}')">删除</button>
+                    </div>
+                </div>
+                <div class="node-time">学习: ${formatSeconds(learnTime)} | 复习: ${formatSeconds(reviewTime)}</div>
+                ${node.done ? '<div style="font-size: 12px; color: #27ae60;">✓ 已完成</div>' : ''}
             `;
             
             treeDiv.appendChild(nodeDiv);
 
-            if (node.children) {
+            if (node.children && node.children.length > 0) {
                 node.children.forEach(child => displayProjectTree(child, level + 1));
             }
         }
 
+        function selectNode(nodeDiv, node) {
+            // 移除之前选中的状态
+            document.querySelectorAll('.tree-node').forEach(n => n.classList.remove('selected'));
+            // 添加选中状态
+            nodeDiv.classList.add('selected');
+            
+            // 显示统计信息
+            updateProjectStats(node);
+        }
+
+        function updateProjectStats(node) {
+            const statsDiv = document.getElementById('projectStats');
+            const learnTime = node.learn_time || 0;
+            const reviewTime = node.review_time || 0;
+            const childCount = node.children ? node.children.length : 0;
+            
+            // 计算总学习时间（包括子节点）
+            const totalTime = calculateTotalTime(node);
+            
+            statsDiv.innerHTML = `
+                <h4>${node.name}</h4>
+                <p><strong>学习时间:</strong> ${formatSeconds(learnTime)}</p>
+                <p><strong>复习时间:</strong> ${formatSeconds(reviewTime)}</p>
+                <p><strong>总计时间:</strong> ${formatSeconds(totalTime)}</p>
+                <p><strong>子节点数:</strong> ${childCount}</p>
+                <p><strong>状态:</strong> ${node.done ? '✓ 已完成' : '⚠ 进行中'}</p>
+                ${node.done && node.done_time ? `<p><strong>完成时间:</strong> ${new Date(node.done_time * 1000).toLocaleString()}</p>` : ''}
+                <hr>
+                <div style="margin-top: 15px;">
+                    <button onclick="toggleNodeComplete('${node.id}', ${!node.done})" 
+                            style="background: ${node.done ? '#e74c3c' : '#27ae60'};">
+                        ${node.done ? '标记未完成' : '标记完成'}
+                    </button>
+                    <button onclick="addChildNode('${node.id}')" style="background: #3498db;">
+                        添加子节点
+                    </button>
+                </div>
+            `;
+        }
+
+        function calculateTotalTime(node) {
+            let total = (node.learn_time || 0) + (node.review_time || 0);
+            if (node.children) {
+                node.children.forEach(child => {
+                    total += calculateTotalTime(child);
+                });
+            }
+            return total;
+        }
+
+        async function toggleNodeComplete(nodeId, isDone) {
+            try {
+                await apiCall(`/api/projects/node/${nodeId}/done`, {
+                    method: 'PUT',
+                    body: JSON.stringify({ done: isDone })
+                });
+                await loadProjects();
+                showStatus(`节点状态已更新`);
+            } catch (error) {
+                showStatus('更新节点状态失败', 'error');
+            }
+        }
+
+        async function addChildNode(parentId) {
+            const name = prompt('请输入子节点名称:');
+            if (!name || !name.trim()) return;
+
+            try {
+                await apiCall('/api/projects/node', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: `name=${encodeURIComponent(name.trim())}&parent_id=${parentId}`
+                });
+                await loadProjects();
+                showStatus('子节点创建成功');
+            } catch (error) {
+                showStatus('创建子节点失败', 'error');
+            }
+        }
+
+        async function deleteNode(event, nodeId) {
+            event.stopPropagation();
+            if (!confirm('确定要删除这个节点吗？此操作不可恢复！')) return;
+
+            try {
+                await apiCall(`/api/projects/node/${nodeId}`, {
+                    method: 'DELETE'
+                });
+                await loadProjects();
+                showStatus('节点删除成功');
+            } catch (error) {
+                showStatus('删除节点失败', 'error');
+            }
+        }
+
+        function selectForTimer(event, nodeId, nodeName, mode) {
+            event.stopPropagation(); // 阻止事件冒泡
+            
+            const node = { id: nodeId, name: nodeName };
+            showTimer(node, mode);
+        }
+
         async function createNode() {
-            const name = document.getElementById('newNodeName').value;
+            const name = document.getElementById('newNodeName').value.trim();
             if (!name) {
                 showStatus('请输入节点名称', 'error');
                 return;
@@ -235,14 +759,7 @@
             }
         }
 
-        function selectForTimer(nodeId, nodeName, mode) {
-            currentNode = { id: nodeId, name: nodeName };
-            timerMode = mode;
-            document.getElementById('currentTask').innerHTML = 
-                `当前任务: ${nodeName} (${mode === 'learn' ? '学习' : '复习'})`;
-            showStatus(`已选择任务: ${nodeName}`);
-        }
-
+        // 计时器功能
         function startTimer() {
             if (!currentNode) {
                 showStatus('请先选择一个任务', 'error');
@@ -257,51 +774,68 @@
             }
 
             timerState = 'running';
+            isTimerRunning = true;
             timerInterval = setInterval(updateTimerDisplay, 1000);
+            document.getElementById('timerStatus').textContent = '运行中';
+            updateTimerButtons();
             showStatus('计时器已开始');
+            
+            // 阻止页面关闭
+            window.onbeforeunload = function() {
+                return "计时器正在运行中，确定要离开吗？";
+            };
         }
 
         function pauseTimer() {
             if (timerState === 'running') {
                 timerState = 'paused';
+                isTimerRunning = false;
                 clearInterval(timerInterval);
                 elapsedTime = Date.now() - startTime;
+                document.getElementById('timerStatus').textContent = '已暂停';
+                updateTimerButtons();
                 showStatus('计时器已暂停');
+                
+                // 移除页面关闭保护
+                window.onbeforeunload = null;
             }
         }
 
         async function stopTimer() {
             if (timerState === 'stopped') return;
 
+            const wasRunning = timerState === 'running';
             clearInterval(timerInterval);
             const endTime = Date.now();
-            const totalTime = timerState === 'running' ? endTime - startTime : elapsedTime;
+            const totalTime = wasRunning ? endTime - startTime : elapsedTime;
 
-            // 发送计时数据到后端
-            try {
-                const session = {
-                    node_id: currentNode.id,
-                    mode: timerMode,
-                    intervals: [{
-                        start: Math.floor(startTime / 1000),
-                        end: Math.floor(endTime / 1000)
-                    }]
-                };
+            if (totalTime > 1000) { // 只有超过1秒才保存
+                try {
+                    const session = {
+                        node_id: currentNode.id,
+                        mode: timerMode,
+                        intervals: [{
+                            start: Math.floor(startTime / 1000),
+                            end: Math.floor(endTime / 1000)
+                        }]
+                    };
 
-                await apiCall('/api/timer/complete', {
-                    method: 'POST',
-                    body: JSON.stringify(session)
-                });
+                    await apiCall('/api/timer/complete', {
+                        method: 'POST',
+                        body: JSON.stringify(session)
+                    });
 
-                showStatus(`计时完成！总用时: ${formatTime(Math.floor(totalTime / 1000))}`);
-            } catch (error) {
-                showStatus('保存计时记录失败', 'error');
+                    showStatus(`计时完成！总用时: ${formatTime(Math.floor(totalTime / 1000))}`);
+                } catch (error) {
+                    showStatus('保存计时记录失败', 'error');
+                }
             }
 
             // 重置计时器
-            timerState = 'stopped';
-            elapsedTime = 0;
-            document.getElementById('timerDisplay').textContent = '00:00:00';
+            resetTimer();
+            
+            // 移除页面关闭保护
+            window.onbeforeunload = null;
         }
 
         function updateTimerDisplay() {
@@ -318,30 +852,435 @@
             return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
         }
 
-        async function getSettings() {
-            try {
-                const settings = await apiCall('/api/settings');
-                showStatus(`设置加载成功，时间线段数: ${settings.timeline_num_segments}`);
-                console.log('Settings:', settings);
-            } catch (error) {
-                showStatus('获取设置失败', 'error');
+        function formatSeconds(seconds) {
+            const h = Math.floor(seconds / 3600);
+            const m = Math.floor((seconds % 3600) / 60);
+            const s = seconds % 60;
+            if (h > 0) {
+                return `${h}h ${m}m ${s}s`;
+            } else if (m > 0) {
+                return `${m}m ${s}s`;
+            } else {
+                return `${s}s`;
             }
         }
 
         async function getTimelineData() {
+            await loadTimelineData();
+        }
+
+        // 统计功能实现
+        async function loadStatsData() {
+            try {
+                // 由于后端没有这些具体的统计API，我们从时间线数据计算统计
+                const timeline = await apiCall('/api/stats/timeline');
+                
+                // 计算今日统计
+                const today = new Date().toISOString().split('T')[0];
+                const todayRecords = timeline.filter(item => item.date === today);
+                
+                const todayStats = {
+                    learn_time: todayRecords
+                        .filter(item => item.type === 'Learn')
+                        .reduce((sum, item) => sum + (item.end - item.start), 0),
+                    review_time: todayRecords
+                        .filter(item => item.type === 'Review')
+                        .reduce((sum, item) => sum + (item.end - item.start), 0),
+                    learn_sessions: todayRecords.filter(item => item.type === 'Learn').length,
+                    review_sessions: todayRecords.filter(item => item.type === 'Review').length
+                };
+                
+                // 计算总体统计
+                const totalStats = {
+                    total_learn_time: timeline
+                        .filter(item => item.type === 'Learn')
+                        .reduce((sum, item) => sum + (item.end - item.start), 0),
+                    total_review_time: timeline
+                        .filter(item => item.type === 'Review')
+                        .reduce((sum, item) => sum + (item.end - item.start), 0),
+                    active_days: [...new Set(timeline.map(item => item.date))].length
+                };
+                
+                displayTodayStats(todayStats);
+                displayTotalStats(totalStats);
+                
+                // 显示最近的学习记录
+                const recentSessions = timeline
+                    .sort((a, b) => b.start - a.start)
+                    .slice(0, 10)
+                    .map(item => ({
+                        node_name: item.task,
+                        mode: item.type.toLowerCase(),
+                        start_time: item.start,
+                        end_time: item.end
+                    }));
+                
+                displayRecentSessions(recentSessions);
+                
+                showStatus('统计数据加载成功');
+            } catch (error) {
+                showStatus('加载统计数据失败', 'error');
+                console.error('Stats error:', error);
+            }
+        }
+
+        function displayTodayStats(stats) {
+            const todayDiv = document.getElementById('todayStats');
+            todayDiv.innerHTML = `
+                <p><strong>学习时间:</strong> ${formatSeconds(stats.learn_time || 0)}</p>
+                <p><strong>复习时间:</strong> ${formatSeconds(stats.review_time || 0)}</p>
+                <p><strong>总计时间:</strong> ${formatSeconds((stats.learn_time || 0) + (stats.review_time || 0))}</p>
+                <p><strong>学习次数:</strong> ${stats.learn_sessions || 0}</p>
+                <p><strong>复习次数:</strong> ${stats.review_sessions || 0}</p>
+            `;
+        }
+
+        function displayTotalStats(stats) {
+            const totalDiv = document.getElementById('totalStats');
+            totalDiv.innerHTML = `
+                <p><strong>累计学习:</strong> ${formatSeconds(stats.total_learn_time || 0)}</p>
+                <p><strong>累计复习:</strong> ${formatSeconds(stats.total_review_time || 0)}</p>
+                <p><strong>总计时间:</strong> ${formatSeconds((stats.total_learn_time || 0) + (stats.total_review_time || 0))}</p>
+                <p><strong>学习天数:</strong> ${stats.active_days || 0}</p>
+                <p><strong>平均每天:</strong> ${stats.active_days ? formatSeconds(((stats.total_learn_time || 0) + (stats.total_review_time || 0)) / stats.active_days) : '0s'}</p>
+            `;
+        }
+
+        function displayRecentSessions(sessions) {
+            const sessionsDiv = document.getElementById('recentSessions');
+            if (!sessions || sessions.length === 0) {
+                sessionsDiv.innerHTML = '<p>暂无学习记录</p>';
+                return;
+            }
+
+            const sessionsList = sessions.map(session => {
+                const startTime = new Date(session.start_time * 1000);
+                const duration = session.end_time - session.start_time;
+                return `
+                    <div style="padding: 10px; border-bottom: 1px solid #eee;">
+                        <strong>${session.node_name}</strong> - ${session.mode === 'learn' ? '学习' : '复习'}
+                        <br>
+                        <small>${startTime.toLocaleString()} | 时长: ${formatSeconds(duration)}</small>
+                    </div>
+                `;
+            }).join('');
+
+            sessionsDiv.innerHTML = sessionsList;
+        }
+
+        async function exportStats() {
+            try {
+                // 获取所有统计数据
+                const [today, total, sessions] = await Promise.all([
+                    apiCall('/api/stats/today'),
+                    apiCall('/api/stats/total'),
+                    apiCall('/api/stats/recent-sessions')
+                ]);
+
+                const data = {
+                    today,
+                    total,
+                    sessions,
+                    exportTime: new Date().toISOString()
+                };
+
+                // 创建并下载JSON文件
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `学习统计_${new Date().toISOString().split('T')[0]}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+
+                showStatus('统计数据导出成功');
+            } catch (error) {
+                showStatus('导出统计数据失败', 'error');
+            }
+        }
+
+        // 时间线功能实现
+        let timelineData = [];
+
+        async function loadTimelineData() {
             try {
                 const timeline = await apiCall('/api/stats/timeline');
+                timelineData = timeline;
+                displayTimeline(timeline);
                 showStatus(`时间线数据加载成功，共 ${timeline.length} 条记录`);
-                console.log('Timeline data:', timeline);
             } catch (error) {
                 showStatus('获取时间线数据失败', 'error');
             }
         }
 
-        // 页面加载时自动测试API连接
+        function displayTimeline(data) {
+            const contentDiv = document.getElementById('timelineContent');
+            if (!data || data.length === 0) {
+                contentDiv.innerHTML = '<p style="text-align: center; color: #666;">暂无时间线数据</p>';
+                return;
+            }
+
+            // 按日期分组
+            const groupedData = {};
+            data.forEach(item => {
+                const date = new Date(item.start_time * 1000).toDateString();
+                if (!groupedData[date]) {
+                    groupedData[date] = [];
+                }
+                groupedData[date].push(item);
+            });
+
+            let html = '';
+            Object.keys(groupedData).sort().reverse().forEach(date => {
+                const dayData = groupedData[date];
+                const dayTotal = dayData.reduce((sum, item) => sum + (item.end_time - item.start_time), 0);
+                
+                html += `
+                    <div style="margin-bottom: 20px; border-left: 4px solid #3498db; padding-left: 15px;">
+                        <h4>${date} (总计: ${formatSeconds(dayTotal)})</h4>
+                        <div style="margin-left: 20px;">
+                `;
+                
+                dayData.forEach(item => {
+                    const start = new Date(item.start_time * 1000);
+                    const duration = item.end_time - item.start_time;
+                    const color = item.mode === 'learn' ? '#3498db' : '#f39c12';
+                    
+                    html += `
+                        <div style="margin: 8px 0; padding: 8px; background: ${color}20; border-left: 3px solid ${color}; border-radius: 3px;">
+                            <strong>${item.node_name}</strong> - ${item.mode === 'learn' ? '学习' : '复习'}
+                            <br>
+                            <small>${start.toLocaleTimeString()} | 时长: ${formatSeconds(duration)}</small>
+                        </div>
+                    `;
+                });
+                
+                html += '</div></div>';
+            });
+
+            contentDiv.innerHTML = html;
+        }
+
+        function filterTimeline() {
+            const filter = document.getElementById('timelineFilter').value;
+            const dateFilter = document.getElementById('dateFilter').value;
+            
+            let filteredData = timelineData;
+            
+            if (filter !== 'all') {
+                filteredData = filteredData.filter(item => item.mode === filter);
+            }
+            
+            if (dateFilter) {
+                const selectedDate = new Date(dateFilter);
+                filteredData = filteredData.filter(item => {
+                    const itemDate = new Date(item.start_time * 1000);
+                    return itemDate.toDateString() === selectedDate.toDateString();
+                });
+            }
+            
+            displayTimeline(filteredData);
+        }
+
+        // 复习功能实现
+        async function loadReviewData() {
+            try {
+                // 从项目数据中找出需要复习的项目
+                const projects = await apiCall('/api/projects');
+                
+                // 递归查找所有叶子节点
+                function findLeafNodes(node, leaves = []) {
+                    if (!node.children || node.children.length === 0) {
+                        leaves.push(node);
+                    } else {
+                        node.children.forEach(child => findLeafNodes(child, leaves));
+                    }
+                    return leaves;
+                }
+                
+                const allLeaves = findLeafNodes(projects);
+                
+                // 模拟复习数据（根据lastreview和review_state）
+                const reviewData = allLeaves.map(leaf => ({
+                    id: leaf.id,
+                    name: leaf.name,
+                    last_review: leaf.lastreview || 0,
+                    review_state: leaf.review_state || false,
+                    priority: Math.floor(Math.random() * 5) + 1 // 1-5的优先级
+                }));
+                
+                // 按优先级和上次复习时间排序
+                reviewData.sort((a, b) => {
+                    if (a.priority !== b.priority) {
+                        return b.priority - a.priority;
+                    }
+                    return a.last_review - b.last_review;
+                });
+                
+                displayReviewList(reviewData);
+                showStatus('复习数据加载成功');
+            } catch (error) {
+                showStatus('加载复习数据失败', 'error');
+                console.error('Review error:', error);
+            }
+        }
+
+        function displayReviewList(data) {
+            const listDiv = document.getElementById('reviewList');
+            if (!data || data.length === 0) {
+                listDiv.innerHTML = '<p>暂无需要复习的项目</p>';
+                return;
+            }
+
+            const html = data.map(item => {
+                const lastReview = item.last_review ? new Date(item.last_review * 1000).toLocaleDateString() : '从未复习';
+                const priorityColor = item.priority > 3 ? '#e74c3c' : item.priority > 2 ? '#f39c12' : '#27ae60';
+                
+                return `
+                    <div style="padding: 12px; margin: 8px 0; border: 2px solid ${priorityColor}; border-radius: 6px; background: ${priorityColor}10;">
+                        <strong>${item.name}</strong>
+                        <br>
+                        <small>上次复习: ${lastReview}</small>
+                        <br>
+                        <small style="color: ${priorityColor};">优先级: ${item.priority}/5</small>
+                        <br>
+                        <button onclick="selectForTimer(null, '${item.id}', '${item.name}', 'review')" 
+                                style="margin-top: 5px; background: ${priorityColor}; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;">开始复习</button>
+                    </div>
+                `;
+            }).join('');
+
+            listDiv.innerHTML = html;
+        }
+
+        function getReviewUrgency(lastReview) {
+            if (!lastReview) {
+                return { color: '#e74c3c', text: '急需复习' };
+            }
+            
+            const daysSince = (Date.now() / 1000 - lastReview) / (24 * 3600);
+            
+            if (daysSince > 7) {
+                return { color: '#e74c3c', text: '急需复习' };
+            } else if (daysSince > 3) {
+                return { color: '#f39c12', text: '建议复习' };
+            } else {
+                return { color: '#27ae60', text: '复习较新' };
+            }
+        }
+
+        async function planReview() {
+            const plan = await generateReviewPlan();
+            document.getElementById('reviewSchedule').innerHTML = plan;
+        }
+
+        async function generateReviewPlan() {
+            try {
+                const projects = await apiCall('/api/projects');
+                const allNodes = getAllNodes(projects);
+                
+                // 根据学习时间和复习时间制定计划
+                const plan = allNodes.filter(node => node.learn_time > 0).map(node => {
+                    const lastReview = node.last_review || 0;
+                    const daysSince = lastReview ? (Date.now() / 1000 - lastReview) / (24 * 3600) : 999;
+                    
+                    return {
+                        ...node,
+                        priority: daysSince,
+                        recommendedDate: new Date(Date.now() + Math.max(0, 3 - daysSince) * 24 * 3600 * 1000)
+                    };
+                }).sort((a, b) => b.priority - a.priority);
+
+                return plan.slice(0, 10).map(item => `
+                    <div style="padding: 8px; margin: 4px 0; border-left: 3px solid #3498db; background: #f8f9fa;">
+                        <strong>${item.name}</strong>
+                        <br>
+                        <small>建议复习时间: ${item.recommendedDate.toLocaleDateString()}</small>
+                    </div>
+                `).join('');
+                
+            } catch (error) {
+                return '<p>生成复习计划失败</p>';
+            }
+        }
+
+        function getAllNodes(node, result = []) {
+            result.push(node);
+            if (node.children) {
+                node.children.forEach(child => getAllNodes(child, result));
+            }
+            return result;
+        }
+
+        // 设置功能实现
+        async function loadSettingsData() {
+            try {
+                const settings = await apiCall('/api/settings');
+                
+                document.getElementById('timelineSegments').value = settings.timeline_num_segments || 10;
+                document.getElementById('defaultColor').value = settings.default_color || '#A0A0A0';
+                document.getElementById('treeXOffset').value = settings.tree_x_offset || 300;
+                document.getElementById('treeYOffset').value = settings.tree_y_offset || 120;
+                
+                showStatus('设置加载成功');
+            } catch (error) {
+                showStatus('获取设置失败', 'error');
+            }
+        }
+
+        async function saveSettings() {
+            try {
+                const settings = {
+                    timeline_num_segments: parseInt(document.getElementById('timelineSegments').value),
+                    default_color: document.getElementById('defaultColor').value,
+                    tree_x_offset: parseInt(document.getElementById('treeXOffset').value),
+                    tree_y_offset: parseInt(document.getElementById('treeYOffset').value)
+                };
+
+                await apiCall('/api/settings', {
+                    method: 'PUT',
+                    body: JSON.stringify(settings)
+                });
+                
+                showStatus('设置保存成功');
+            } catch (error) {
+                showStatus('保存设置失败', 'error');
+            }
+        }
+
+        function resetSettings() {
+            document.getElementById('timelineSegments').value = 10;
+            document.getElementById('defaultColor').value = '#A0A0A0';
+            document.getElementById('treeXOffset').value = 300;
+            document.getElementById('treeYOffset').value = 120;
+            showStatus('设置已重置为默认值');
+        }
+
+        // 页面加载时初始化
         window.onload = function() {
-            testAPI();
+            // 初始化计时器按钮状态
+            updateTimerButtons();
+            
+            // 测试API连接
+            apiCall('/')
+                .then(result => {
+                    showStatus(`后端连接成功: ${result.message}`);
+                    // 自动加载项目
+                    loadProjects();
+                })
+                .catch(() => {
+                    showStatus('后端连接失败，请确保服务器正在运行', 'error');
+                });
         };
+
+        // 防止在计时时关闭页面
+        window.addEventListener('beforeunload', function(e) {
+            if (isTimerRunning) {
+                e.preventDefault();
+                e.returnValue = '计时器正在运行中，确定要离开吗？';
+                return e.returnValue;
+            }
+        });
     </script>
 </body>
 </html>
