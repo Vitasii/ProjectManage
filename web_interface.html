@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project Manager - Web界面</title>
+    <style>
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #333;
+        }
+        .section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .section h3 {
+            margin-top: 0;
+            color: #2196F3;
+        }
+        button {
+            background: #2196F3;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #1976D2;
+        }
+        .project-tree {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #eee;
+            padding: 10px;
+        }
+        .node {
+            margin: 5px 0;
+            padding: 8px;
+            background: #f9f9f9;
+            border-radius: 3px;
+        }
+        .node.done {
+            text-decoration: line-through;
+            opacity: 0.7;
+        }
+        input {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            margin: 5px;
+        }
+        .timer-display {
+            font-size: 48px;
+            font-weight: bold;
+            text-align: center;
+            margin: 20px 0;
+            font-family: monospace;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .status.success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .status.error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Project Manager</h1>
+            <p>Web界面 - 后端API测试</p>
+        </div>
+
+        <div id="status"></div>
+
+        <!-- 项目管理区域 -->
+        <div class="section">
+            <h3>项目管理</h3>
+            <button onclick="loadProjects()">加载项目</button>
+            <input type="text" id="newNodeName" placeholder="新节点名称">
+            <button onclick="createNode()">添加节点</button>
+            
+            <div class="project-tree" id="projectTree">
+                <p>点击"加载项目"查看项目树</p>
+            </div>
+        </div>
+
+        <!-- 计时器区域 -->
+        <div class="section">
+            <h3>计时器</h3>
+            <div id="currentTask">请先选择一个任务</div>
+            <div class="timer-display" id="timerDisplay">00:00:00</div>
+            <div>
+                <button onclick="startTimer()">开始</button>
+                <button onclick="pauseTimer()">暂停</button>
+                <button onclick="stopTimer()">结束</button>
+            </div>
+        </div>
+
+        <!-- API测试区域 -->
+        <div class="section">
+            <h3>API测试</h3>
+            <button onclick="testAPI()">测试API连接</button>
+            <button onclick="getSettings()">获取设置</button>
+            <button onclick="getTimelineData()">获取时间线数据</button>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8000';
+        let currentNode = null;
+        let timerMode = 'learn';
+        let timerState = 'stopped'; // stopped, running, paused
+        let startTime = null;
+        let timerInterval = null;
+        let elapsedTime = 0;
+
+        function showStatus(message, type = 'success') {
+            const statusDiv = document.getElementById('status');
+            statusDiv.innerHTML = `<div class="status ${type}">${message}</div>`;
+            setTimeout(() => statusDiv.innerHTML = '', 3000);
+        }
+
+        async function apiCall(endpoint, options = {}) {
+            try {
+                const response = await fetch(`${API_BASE}${endpoint}`, {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...options.headers
+                    },
+                    ...options
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                return await response.json();
+            } catch (error) {
+                showStatus(`API错误: ${error.message}`, 'error');
+                throw error;
+            }
+        }
+
+        async function testAPI() {
+            try {
+                const result = await apiCall('/');
+                showStatus(`API连接成功: ${result.message}`);
+            } catch (error) {
+                showStatus('API连接失败，请确保后端服务器正在运行', 'error');
+            }
+        }
+
+        async function loadProjects() {
+            try {
+                const projects = await apiCall('/api/projects');
+                displayProjectTree(projects);
+                showStatus('项目加载成功');
+            } catch (error) {
+                showStatus('加载项目失败', 'error');
+            }
+        }
+
+        function displayProjectTree(node, level = 0) {
+            const treeDiv = document.getElementById('projectTree');
+            if (level === 0) {
+                treeDiv.innerHTML = '';
+            }
+
+            const nodeDiv = document.createElement('div');
+            nodeDiv.className = `node ${node.done ? 'done' : ''}`;
+            nodeDiv.style.marginLeft = `${level * 20}px`;
+            
+            nodeDiv.innerHTML = `
+                <input type="checkbox" ${node.done ? 'checked' : ''} 
+                       onchange="toggleNodeStatus('${node.id}', this.checked)">
+                <span>${node.name}</span>
+                <button onclick="selectForTimer('${node.id}', '${node.name}', 'learn')">学习</button>
+                <button onclick="selectForTimer('${node.id}', '${node.name}', 'review')">复习</button>
+            `;
+            
+            treeDiv.appendChild(nodeDiv);
+
+            if (node.children) {
+                node.children.forEach(child => displayProjectTree(child, level + 1));
+            }
+        }
+
+        async function createNode() {
+            const name = document.getElementById('newNodeName').value;
+            if (!name) {
+                showStatus('请输入节点名称', 'error');
+                return;
+            }
+
+            try {
+                await apiCall('/api/projects/node', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: `name=${encodeURIComponent(name)}&parent_id=root`
+                });
+                document.getElementById('newNodeName').value = '';
+                await loadProjects();
+                showStatus('节点创建成功');
+            } catch (error) {
+                showStatus('创建节点失败', 'error');
+            }
+        }
+
+        function selectForTimer(nodeId, nodeName, mode) {
+            currentNode = { id: nodeId, name: nodeName };
+            timerMode = mode;
+            document.getElementById('currentTask').innerHTML = 
+                `当前任务: ${nodeName} (${mode === 'learn' ? '学习' : '复习'})`;
+            showStatus(`已选择任务: ${nodeName}`);
+        }
+
+        function startTimer() {
+            if (!currentNode) {
+                showStatus('请先选择一个任务', 'error');
+                return;
+            }
+
+            if (timerState === 'stopped') {
+                startTime = Date.now();
+                elapsedTime = 0;
+            } else if (timerState === 'paused') {
+                startTime = Date.now() - elapsedTime;
+            }
+
+            timerState = 'running';
+            timerInterval = setInterval(updateTimerDisplay, 1000);
+            showStatus('计时器已开始');
+        }
+
+        function pauseTimer() {
+            if (timerState === 'running') {
+                timerState = 'paused';
+                clearInterval(timerInterval);
+                elapsedTime = Date.now() - startTime;
+                showStatus('计时器已暂停');
+            }
+        }
+
+        async function stopTimer() {
+            if (timerState === 'stopped') return;
+
+            clearInterval(timerInterval);
+            const endTime = Date.now();
+            const totalTime = timerState === 'running' ? endTime - startTime : elapsedTime;
+
+            // 发送计时数据到后端
+            try {
+                const session = {
+                    node_id: currentNode.id,
+                    mode: timerMode,
+                    intervals: [{
+                        start: Math.floor(startTime / 1000),
+                        end: Math.floor(endTime / 1000)
+                    }]
+                };
+
+                await apiCall('/api/timer/complete', {
+                    method: 'POST',
+                    body: JSON.stringify(session)
+                });
+
+                showStatus(`计时完成！总用时: ${formatTime(Math.floor(totalTime / 1000))}`);
+            } catch (error) {
+                showStatus('保存计时记录失败', 'error');
+            }
+
+            // 重置计时器
+            timerState = 'stopped';
+            elapsedTime = 0;
+            document.getElementById('timerDisplay').textContent = '00:00:00';
+        }
+
+        function updateTimerDisplay() {
+            if (timerState === 'running') {
+                const elapsed = Math.floor((Date.now() - startTime) / 1000);
+                document.getElementById('timerDisplay').textContent = formatTime(elapsed);
+            }
+        }
+
+        function formatTime(seconds) {
+            const h = Math.floor(seconds / 3600);
+            const m = Math.floor((seconds % 3600) / 60);
+            const s = seconds % 60;
+            return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+        }
+
+        async function getSettings() {
+            try {
+                const settings = await apiCall('/api/settings');
+                showStatus(`设置加载成功，时间线段数: ${settings.timeline_num_segments}`);
+                console.log('Settings:', settings);
+            } catch (error) {
+                showStatus('获取设置失败', 'error');
+            }
+        }
+
+        async function getTimelineData() {
+            try {
+                const timeline = await apiCall('/api/stats/timeline');
+                showStatus(`时间线数据加载成功，共 ${timeline.length} 条记录`);
+                console.log('Timeline data:', timeline);
+            } catch (error) {
+                showStatus('获取时间线数据失败', 'error');
+            }
+        }
+
+        // 页面加载时自动测试API连接
+        window.onload = function() {
+            testAPI();
+        };
+    </script>
+</body>
+</html>

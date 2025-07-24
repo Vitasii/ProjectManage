@@ -1,8 +1,0 @@
-REM 目录分发模式的PyInstaller命令（便于复制数据库文件）：
-
-pyinstaller --windowed --paths="src" --add-data "data;data" --add-data "src;src" --add-data "C:\Users\Vitas\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packages\Python311\site-packages\plotly\validators;plotly\validators" --add-data "C:\Users\Vitas\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packages\Python311\site-packages\plotly\package_data;plotly\package_data" --add-data "C:\Users\Vitas\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packages\Python311\site-packages\plotly\graph_objects;plotly\graph_objects" --add-data "C:\Users\Vitas\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packages\Python311\site-packages\plotly\figure_factory;plotly\figure_factory" --hidden-import plotly.validators --hidden-import plotly.validators.scatter --hidden-import plotly.validators.layout --hidden-import plotly.graph_objects --hidden-import plotly.graph_objects.scatter --hidden-import plotly.figure_factory --hidden-import plotly.subplots --hidden-import plotly.offline --hidden-import plotly.io --hidden-import settings --hidden-import timer --hidden-import project_tree --hidden-import review --hidden-import stats --hidden-import timeline_plotly --hidden-import db --hidden-import tree_base --icon ico.ico --name VisManager run.py
-
-REM 注意：
-REM 1. 移除了 --onefile 参数，这样会生成一个包含多个文件的文件夹
-REM 2. 数据库文件位于 dist/VisManager/data/ 目录下
-REM 3. 可以直接在该目录下备份和恢复数据库文件
